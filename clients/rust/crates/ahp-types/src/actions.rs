@@ -55,6 +55,7 @@ pub enum ActionType {
     ChatError,
     ChatTurnResume,
     ChatActivityChanged,
+    ChatChangesetsChanged,
     ChatWorkingDirectorySet,
     ChatWorkingDirectoryRemoved,
     SessionTitleChanged,
@@ -170,6 +171,7 @@ impl serde::Serialize for ActionType {
             Self::ChatError => serializer.serialize_str("chat/error"),
             Self::ChatTurnResume => serializer.serialize_str("chat/turnResume"),
             Self::ChatActivityChanged => serializer.serialize_str("chat/activityChanged"),
+            Self::ChatChangesetsChanged => serializer.serialize_str("chat/changesetsChanged"),
             Self::ChatWorkingDirectorySet => serializer.serialize_str("chat/workingDirectorySet"),
             Self::ChatWorkingDirectoryRemoved => {
                 serializer.serialize_str("chat/workingDirectoryRemoved")
@@ -331,6 +333,7 @@ impl<'de> serde::Deserialize<'de> for ActionType {
             "chat/error" => Self::ChatError,
             "chat/turnResume" => Self::ChatTurnResume,
             "chat/activityChanged" => Self::ChatActivityChanged,
+            "chat/changesetsChanged" => Self::ChatChangesetsChanged,
             "chat/workingDirectorySet" => Self::ChatWorkingDirectorySet,
             "chat/workingDirectoryRemoved" => Self::ChatWorkingDirectoryRemoved,
             "session/titleChanged" => Self::SessionTitleChanged,
@@ -1047,6 +1050,23 @@ pub struct ChatActivityChangedAction {
     /// Human-readable description of current activity; omit or set `undefined` to clear
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub activity: Option<String>,
+}
+
+/// The {@link Changeset | catalogue of changesets} the agent host advertises
+/// for this chat changed. Replaces
+/// {@link ChatState.changesets | `state.changesets`} entirely
+/// (full-replacement semantics) — set to `undefined` to clear the catalogue.
+///
+/// Entries SHOULD describe Branch, Uncommitted Changes, or other views scoped
+/// to the chat's effective {@link ChatState.workingDirectories | working
+/// directories}. Clients subscribe to each advertised changeset URI for
+/// file-level updates through the existing `changeset/*` action stream.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatChangesetsChangedAction {
+    /// New catalogue, or `undefined` to clear it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub changesets: Option<Vec<Changeset>>,
 }
 
 /// Session title updated. Fired by the server when the title is auto-generated
@@ -2256,6 +2276,8 @@ pub enum StateAction {
     ChatTurnResume(ChatTurnResumeAction),
     #[serde(rename = "chat/activityChanged")]
     ChatActivityChanged(ChatActivityChangedAction),
+    #[serde(rename = "chat/changesetsChanged")]
+    ChatChangesetsChanged(ChatChangesetsChangedAction),
     #[serde(rename = "session/titleChanged")]
     SessionTitleChanged(SessionTitleChangedAction),
     #[serde(rename = "chat/usage")]
