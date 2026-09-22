@@ -1,7 +1,7 @@
 {
   "name": "terminal-content-full-output-without-preview",
   "group": "A",
-  "description": "A terminal result can retain full output without a preview, truncation flag, or optional content-reference metadata.",
+  "description": "A terminal result can retain full output without a preview, truncation flag, or optional size hint.",
   "type": "ActionEnvelope",
   "input": {
     "channel": "ahp-chat:/s1/c1",

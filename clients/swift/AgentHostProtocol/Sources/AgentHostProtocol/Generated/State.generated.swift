@@ -5315,6 +5315,21 @@ public struct FileEdit: Codable, Sendable {
     }
 }
 
+public struct TerminalOutputRef: Codable, Sendable {
+    /// Content URI, read with `resourceRead`
+    public var uri: String
+    /// Approximate output size in bytes
+    public var sizeHint: Int?
+
+    public init(
+        uri: String,
+        sizeHint: Int? = nil
+    ) {
+        self.uri = uri
+        self.sizeHint = sizeHint
+    }
+}
+
 public struct TerminalCommandResult: Codable, Sendable {
     /// Exit code from the completed command, if reported by the runtime
     public var exitCode: Int?
@@ -5325,15 +5340,17 @@ public struct TerminalCommandResult: Codable, Sendable {
     public var preview: String?
     /// Whether `preview` is known to be incomplete or truncated
     public var truncated: Bool?
-    /// Reference to the command's full captured output, read with `resourceRead`.
-    /// Availability is host-defined; the content may no longer be available when read.
-    public var fullOutput: ContentRef?
+    /// Reference to the command's full captured output.
+    ///
+    /// The producing peer defines its retention period. Consumers must handle
+    /// `NotFound` if the artifact has been removed or its owning session ended.
+    public var fullOutput: TerminalOutputRef?
 
     public init(
         exitCode: Int? = nil,
         preview: String? = nil,
         truncated: Bool? = nil,
-        fullOutput: ContentRef? = nil
+        fullOutput: TerminalOutputRef? = nil
     ) {
         self.exitCode = exitCode
         self.preview = preview

@@ -1,4 +1,4 @@
 {
   "type": "added",
-  "message": "Optional `TerminalCommandResult.fullOutput` content reference for lazily reading a command's full captured output."
+  "message": "Optional `TerminalCommandResult.fullOutput` URI and size hint for lazily reading a command's full captured output."
 }

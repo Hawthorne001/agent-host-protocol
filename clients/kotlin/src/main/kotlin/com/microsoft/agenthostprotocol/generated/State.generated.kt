@@ -4538,6 +4538,18 @@ data class FileEdit(
 )
 
 @Serializable
+data class TerminalOutputRef(
+    /**
+     * Content URI, read with `resourceRead`
+     */
+    val uri: String,
+    /**
+     * Approximate output size in bytes
+     */
+    val sizeHint: Long? = null
+)
+
+@Serializable
 data class TerminalCommandResult(
     /**
      * Exit code from the completed command, if reported by the runtime
@@ -4555,10 +4567,12 @@ data class TerminalCommandResult(
      */
     val truncated: Boolean? = null,
     /**
-     * Reference to the command's full captured output, read with `resourceRead`.
-     * Availability is host-defined; the content may no longer be available when read.
+     * Reference to the command's full captured output.
+     *
+     * The producing peer defines its retention period. Consumers must handle
+     * `NotFound` if the artifact has been removed or its owning session ended.
      */
-    val fullOutput: ContentRef? = null
+    val fullOutput: TerminalOutputRef? = null
 )
 
 @Serializable

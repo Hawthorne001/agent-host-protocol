@@ -4655,6 +4655,17 @@ pub struct FileEdit {
     pub diff: Option<AnyValue>,
 }
 
+/// Reference to a command's full captured output.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalOutputRef {
+    /// Content URI, read with `resourceRead`
+    pub uri: Uri,
+    /// Approximate output size in bytes
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_hint: Option<i64>,
+}
+
 /// Outcome of a command run in a terminal-style tool, filled in on
 /// {@link ToolResultTerminalContent.result} once the command exits.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4672,10 +4683,12 @@ pub struct TerminalCommandResult {
     /// Whether `preview` is known to be incomplete or truncated
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub truncated: Option<bool>,
-    /// Reference to the command's full captured output, read with `resourceRead`.
-    /// Availability is host-defined; the content may no longer be available when read.
+    /// Reference to the command's full captured output.
+    ///
+    /// The producing peer defines its retention period. Consumers must handle
+    /// `NotFound` if the artifact has been removed or its owning session ended.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub full_output: Option<ContentRef>,
+    pub full_output: Option<TerminalOutputRef>,
 }
 
 /// Lightweight terminal metadata exposed on the root state.

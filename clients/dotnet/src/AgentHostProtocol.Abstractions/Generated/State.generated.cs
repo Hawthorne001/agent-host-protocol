@@ -3317,6 +3317,17 @@ public sealed record ToolResultTerminalContent
     public TerminalCommandResult? Result { get; init; }
 }
 
+/// <summary>Reference to a command's full captured output.</summary>
+public sealed record TerminalOutputRef
+{
+    /// <summary>Content URI, read with `resourceRead`</summary>
+    public required string Uri { get; init; }
+
+    /// <summary>Approximate output size in bytes</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? SizeHint { get; init; }
+}
+
 /// <summary>Outcome of a command run in a terminal-style tool, filled in on
 /// {@link ToolResultTerminalContent.result} once the command exits.</summary>
 public sealed record TerminalCommandResult
@@ -3336,10 +3347,12 @@ public sealed record TerminalCommandResult
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? Truncated { get; init; }
 
-    /// <summary>Reference to the command's full captured output, read with `resourceRead`.
-    /// Availability is host-defined; the content may no longer be available when read.</summary>
+    /// <summary>Reference to the command's full captured output.
+    ///
+    /// The producing peer defines its retention period. Consumers must handle
+    /// `NotFound` if the artifact has been removed or its owning session ended.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public ContentRef? FullOutput { get; init; }
+    public TerminalOutputRef? FullOutput { get; init; }
 }
 
 /// <summary>A reference, embedded in a tool result, to a worker chat spawned by the tool

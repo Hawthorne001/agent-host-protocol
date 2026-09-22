@@ -51,8 +51,7 @@
             "truncated": true,
             "fullOutput": {
               "uri": "shell-output:/tc-1",
-              "contentType": "text/plain",
-              "nonce": "output-1"
+              "sizeHint": 8192
             }
           }
         }
@@ -94,8 +93,7 @@
                   "truncated": true,
                   "fullOutput": {
                     "uri": "shell-output:/tc-1",
-                    "contentType": "text/plain",
-                    "nonce": "output-1"
+                    "sizeHint": 8192
                   }
                 }
               }
