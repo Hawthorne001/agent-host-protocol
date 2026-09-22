@@ -3780,7 +3780,11 @@ pub struct ToolResultFileEditContent {
 /// A reference to a terminal whose output is relevant to this tool result.
 ///
 /// Clients can subscribe to the terminal's URI to stream its output in real
-/// time, providing live feedback while a tool is executing.
+/// time, providing live feedback while a tool is executing. The same URI
+/// remains subscribable for historical results: once execution has ended,
+/// subscribing returns an exited {@link TerminalState} containing the retained
+/// terminal content. Servers may reconstruct that state lazily and do not need
+/// to retain a live terminal process.
 ///
 /// When the command exits, {@link result} is filled in on the completed
 /// result, retaining the outcome for clients that did not subscribe. This
@@ -3789,7 +3793,7 @@ pub struct ToolResultFileEditContent {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolResultTerminalContent {
-    /// Terminal URI (subscribable for full terminal state)
+    /// Terminal URI (subscribable for live or retained terminal state)
     pub resource: Uri,
     /// Display title for the terminal content
     pub title: String,
@@ -4696,17 +4700,6 @@ pub struct FileEdit {
     pub diff: Option<AnyValue>,
 }
 
-/// Reference to a command's full captured output.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TerminalOutputRef {
-    /// Content URI, read with `resourceRead`
-    pub uri: Uri,
-    /// Approximate output size in bytes
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub size_hint: Option<i64>,
-}
-
 /// Outcome of a command run in a terminal-style tool, filled in on
 /// {@link ToolResultTerminalContent.result} once the command exits.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -4724,12 +4717,6 @@ pub struct TerminalCommandResult {
     /// Whether `preview` is known to be incomplete or truncated
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub truncated: Option<bool>,
-    /// Reference to the command's full captured output.
-    ///
-    /// The producing peer defines its retention period. Consumers must handle
-    /// `NotFound` if the artifact has been removed or its owning session ended.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub full_output: Option<TerminalOutputRef>,
 }
 
 /// Lightweight terminal metadata exposed on the root state.

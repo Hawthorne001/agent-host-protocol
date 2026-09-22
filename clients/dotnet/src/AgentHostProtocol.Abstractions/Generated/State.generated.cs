@@ -3336,7 +3336,11 @@ public sealed record ToolResultFileEditContent
 /// <summary>A reference to a terminal whose output is relevant to this tool result.
 ///
 /// Clients can subscribe to the terminal's URI to stream its output in real
-/// time, providing live feedback while a tool is executing.
+/// time, providing live feedback while a tool is executing. The same URI
+/// remains subscribable for historical results: once execution has ended,
+/// subscribing returns an exited {@link TerminalState} containing the retained
+/// terminal content. Servers may reconstruct that state lazily and do not need
+/// to retain a live terminal process.
 ///
 /// When the command exits, {@link result} is filled in on the completed
 /// result, retaining the outcome for clients that did not subscribe. This
@@ -3346,7 +3350,7 @@ public sealed record ToolResultTerminalContent
 {
     public ToolResultContentType Type { get; init; }
 
-    /// <summary>Terminal URI (subscribable for full terminal state)</summary>
+    /// <summary>Terminal URI (subscribable for live or retained terminal state)</summary>
     public required string Resource { get; init; }
 
     /// <summary>Display title for the terminal content</summary>
@@ -3361,17 +3365,6 @@ public sealed record ToolResultTerminalContent
     /// <summary>Outcome of the command, present once it has exited.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public TerminalCommandResult? Result { get; init; }
-}
-
-/// <summary>Reference to a command's full captured output.</summary>
-public sealed record TerminalOutputRef
-{
-    /// <summary>Content URI, read with `resourceRead`</summary>
-    public required string Uri { get; init; }
-
-    /// <summary>Approximate output size in bytes</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public long? SizeHint { get; init; }
 }
 
 /// <summary>Outcome of a command run in a terminal-style tool, filled in on
@@ -3392,13 +3385,6 @@ public sealed record TerminalCommandResult
     /// <summary>Whether `preview` is known to be incomplete or truncated</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? Truncated { get; init; }
-
-    /// <summary>Reference to the command's full captured output.
-    ///
-    /// The producing peer defines its retention period. Consumers must handle
-    /// `NotFound` if the artifact has been removed or its owning session ended.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public TerminalOutputRef? FullOutput { get; init; }
 }
 
 /// <summary>A reference, embedded in a tool result, to a worker chat spawned by the tool

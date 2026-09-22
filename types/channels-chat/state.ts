@@ -1546,7 +1546,11 @@ export interface ToolResultFileEditContent extends FileEdit {
  * A reference to a terminal whose output is relevant to this tool result.
  *
  * Clients can subscribe to the terminal's URI to stream its output in real
- * time, providing live feedback while a tool is executing.
+ * time, providing live feedback while a tool is executing. The same URI
+ * remains subscribable for historical results: once execution has ended,
+ * subscribing returns an exited {@link TerminalState} containing the retained
+ * terminal content. Servers may reconstruct that state lazily and do not need
+ * to retain a live terminal process.
  *
  * When the command exits, {@link result} is filled in on the completed
  * result, retaining the outcome for clients that did not subscribe. This
@@ -1557,7 +1561,7 @@ export interface ToolResultFileEditContent extends FileEdit {
  */
 export interface ToolResultTerminalContent {
   type: ToolResultContentType.Terminal;
-  /** Terminal URI (subscribable for full terminal state) */
+  /** Terminal URI (subscribable for live or retained terminal state) */
   resource: URI;
   /** Display title for the terminal content */
   title: string;
@@ -1569,18 +1573,6 @@ export interface ToolResultTerminalContent {
   isPty?: boolean;
   /** Outcome of the command, present once it has exited. */
   result?: TerminalCommandResult;
-}
-
-/**
- * Reference to a command's full captured output.
- *
- * @category Tool Result Content
- */
-export interface TerminalOutputRef {
-  /** Content URI, read with `resourceRead` */
-  uri: URI;
-  /** Approximate output size in bytes */
-  sizeHint?: number;
 }
 
 /**
@@ -1601,13 +1593,6 @@ export interface TerminalCommandResult {
   preview?: string;
   /** Whether `preview` is known to be incomplete or truncated */
   truncated?: boolean;
-  /**
-   * Reference to the command's full captured output.
-   *
-   * The producing peer defines its retention period. Consumers must handle
-   * `NotFound` if the artifact has been removed or its owning session ended.
-   */
-  fullOutput?: TerminalOutputRef;
 }
 
 /**

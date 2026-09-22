@@ -733,7 +733,6 @@ const STATE_STRUCTS: { name: string; omitDiscriminants?: boolean; csName?: strin
   { name: 'ToolResultResourceContent' },
   { name: 'ToolResultFileEditContent' },
   { name: 'ToolResultTerminalContent' },
-  { name: 'TerminalOutputRef' },
   { name: 'TerminalCommandResult' },
   { name: 'ToolResultSubagentContent' },
   { name: 'CustomizationLoadingState' },

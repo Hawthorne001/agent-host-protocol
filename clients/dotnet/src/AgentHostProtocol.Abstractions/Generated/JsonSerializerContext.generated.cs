@@ -408,7 +408,6 @@ namespace Microsoft.AgentHostProtocol;
 [JsonSerializable(typeof(TerminalInputAction))]
 [JsonSerializable(typeof(TerminalLifecycleState))]
 [JsonSerializable(typeof(TerminalLifecycleStatus))]
-[JsonSerializable(typeof(TerminalOutputRef))]
 [JsonSerializable(typeof(TerminalResizedAction))]
 [JsonSerializable(typeof(TerminalRunningLifecycleState))]
 [JsonSerializable(typeof(TerminalSessionClaim))]

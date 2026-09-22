@@ -2476,7 +2476,11 @@ type ToolResultFileEditContent struct {
 // A reference to a terminal whose output is relevant to this tool result.
 //
 // Clients can subscribe to the terminal's URI to stream its output in real
-// time, providing live feedback while a tool is executing.
+// time, providing live feedback while a tool is executing. The same URI
+// remains subscribable for historical results: once execution has ended,
+// subscribing returns an exited {@link TerminalState} containing the retained
+// terminal content. Servers may reconstruct that state lazily and do not need
+// to retain a live terminal process.
 //
 // When the command exits, {@link result} is filled in on the completed
 // result, retaining the outcome for clients that did not subscribe. This
@@ -2484,7 +2488,7 @@ type ToolResultFileEditContent struct {
 // running afterwards.
 type ToolResultTerminalContent struct {
 	Type ToolResultContentType `json:"type"`
-	// Terminal URI (subscribable for full terminal state)
+	// Terminal URI (subscribable for live or retained terminal state)
 	Resource URI `json:"resource"`
 	// Display title for the terminal content
 	Title string `json:"title"`
@@ -3285,14 +3289,6 @@ type FileEdit struct {
 	Diff *json.RawMessage `json:"diff,omitempty"`
 }
 
-// Reference to a command's full captured output.
-type TerminalOutputRef struct {
-	// Content URI, read with `resourceRead`
-	Uri URI `json:"uri"`
-	// Approximate output size in bytes
-	SizeHint *int64 `json:"sizeHint,omitempty"`
-}
-
 // Outcome of a command run in a terminal-style tool, filled in on
 // {@link ToolResultTerminalContent.result} once the command exits.
 type TerminalCommandResult struct {
@@ -3305,11 +3301,6 @@ type TerminalCommandResult struct {
 	Preview *string `json:"preview,omitempty"`
 	// Whether `preview` is known to be incomplete or truncated
 	Truncated *bool `json:"truncated,omitempty"`
-	// Reference to the command's full captured output.
-	//
-	// The producing peer defines its retention period. Consumers must handle
-	// `NotFound` if the artifact has been removed or its owning session ended.
-	FullOutput *TerminalOutputRef `json:"fullOutput,omitempty"`
 }
 
 // Lightweight terminal metadata exposed on the root state.

@@ -1028,7 +1028,7 @@ const STATE_STRUCTS = [
   'McpServerStartingState', 'McpServerReadyState', 'McpServerAuthRequiredState',
   'McpServerErrorState', 'McpServerStoppedState', 'McpOAuthClient', 'McpAuthRequirement',
   'ToolCallClientContributor', 'ToolCallMcpContributor',
-  'FileEdit', 'TerminalOutputRef', 'TerminalCommandResult', 'TerminalInfo',
+  'FileEdit', 'TerminalCommandResult', 'TerminalInfo',
   'TerminalClientClaim', 'TerminalSessionClaim',
   'TerminalRunningLifecycleState', 'TerminalExitedLifecycleState', 'TerminalState',
   'TerminalUnclassifiedPart', 'TerminalCommandPart',
