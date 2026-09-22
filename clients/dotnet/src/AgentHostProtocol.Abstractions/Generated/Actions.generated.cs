@@ -1954,8 +1954,9 @@ public sealed record ChatInputCompletedAction
 }
 
 /// <summary>The {@link ChangesetState.status} for this changeset transitioned (e.g.
-/// `computing → ready`). The error payload is set together with `status`
-/// whenever it transitions to {@link ChangesetStatus.Error | Error}.</summary>
+/// `computing → ready` or `recomputing → ready`). The error payload is set
+/// together with `status` whenever it transitions to
+/// {@link ChangesetStatus.Error | Error}.</summary>
 public sealed record ChangesetStatusChangedAction
 {
     public ActionType Type { get; init; }

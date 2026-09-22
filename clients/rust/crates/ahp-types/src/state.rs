@@ -1110,8 +1110,12 @@ impl<'de> serde::Deserialize<'de> for McpAuthRequiredReason {
 /// Computation lifecycle of a {@link ChangesetState}.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ChangesetStatus {
-    /// The server is still computing the contents of this changeset.
+    /// The server is computing this changeset for the first time.
     Computing,
+    /// The server is recomputing this changeset. {@link ChangesetState.files}
+    /// remains the previous completed result while recomputation is in progress,
+    /// including when that result is an empty array.
+    Recomputing,
     /// The changeset has been fully computed and is up-to-date.
     Ready,
     /// Computation failed. The cause is described by
@@ -1128,6 +1132,7 @@ impl serde::Serialize for ChangesetStatus {
     {
         match self {
             Self::Computing => serializer.serialize_str("computing"),
+            Self::Recomputing => serializer.serialize_str("recomputing"),
             Self::Ready => serializer.serialize_str("ready"),
             Self::Error => serializer.serialize_str("error"),
             Self::Unknown(value) => serializer.serialize_str(value),
@@ -1143,6 +1148,7 @@ impl<'de> serde::Deserialize<'de> for ChangesetStatus {
         let raw = <String as serde::Deserialize>::deserialize(deserializer)?;
         Ok(match raw.as_str() {
             "computing" => Self::Computing,
+            "recomputing" => Self::Recomputing,
             "ready" => Self::Ready,
             "error" => Self::Error,
             _ => Self::Unknown(raw),
