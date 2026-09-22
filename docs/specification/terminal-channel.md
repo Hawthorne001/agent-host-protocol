@@ -38,10 +38,12 @@ A terminal is **always owned** — the [`claim`](/guide/terminals#claims-and-own
 ### Historical terminal results
 
 A terminal URI referenced by `ToolResultTerminalContent.resource` remains the
-single subscription identity after its command completes. A later subscription
-MUST return an exited `TerminalState` with the retained `TerminalContentPart[]`.
-The server MAY reconstruct this state lazily from persisted output; retaining a
-live process or an in-memory terminal instance is not required.
+single subscription identity after its command completes. While the terminal
+resource's lifecycle is `running`, subscriptions return its current running
+`TerminalState`. When its lifecycle is `exited`, subscriptions MUST return an
+exited `TerminalState` with the retained `TerminalContentPart[]`. The server MAY
+reconstruct this state lazily from persisted output; retaining a live process or
+an in-memory terminal instance is not required.
 
 The retained terminal resource follows the lifecycle of its owning chat or
 session. Once that owner and its retained data are removed, subscribing may
