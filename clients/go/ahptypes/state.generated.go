@@ -3239,12 +3239,16 @@ type ToolCallMcpContributor struct {
 }
 
 type FileEditSide struct {
-	Uri     URI        `json:"uri"`
+	// URI of the file on this side of the edit
+	Uri URI `json:"uri"`
+	// Reference to the file content on this side of the edit
 	Content ContentRef `json:"content"`
 }
 
 type FileEditDiffStats struct {
-	Added   *int64 `json:"added,omitempty"`
+	// Number of items added (e.g., lines for text files, cells for notebooks)
+	Added *int64 `json:"added,omitempty"`
+	// Number of items removed (e.g., lines for text files, cells for notebooks)
 	Removed *int64 `json:"removed,omitempty"`
 }
 

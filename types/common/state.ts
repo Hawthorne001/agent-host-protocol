@@ -255,12 +255,16 @@ export interface ContentRef {
 // ─── File Edit ───────────────────────────────────────────────────────────────
 
 export interface FileEditSide {
+  /** URI of the file on this side of the edit */
   uri: URI;
+  /** Reference to the file content on this side of the edit */
   content: ContentRef;
 }
 
 export interface FileEditDiffStats {
+  /** Number of items added (e.g., lines for text files, cells for notebooks) */
   added?: number;
+  /** Number of items removed (e.g., lines for text files, cells for notebooks) */
   removed?: number;
 }
 

@@ -4339,16 +4339,20 @@ public sealed record ToolCallMcpContributor
 
 public sealed record FileEditSide
 {
+    /// <summary>URI of the file on this side of the edit</summary>
     public required string Uri { get; init; }
 
+    /// <summary>Reference to the file content on this side of the edit</summary>
     public required ContentRef Content { get; init; }
 }
 
 public sealed record FileEditDiffStats
 {
+    /// <summary>Number of items added (e.g., lines for text files, cells for notebooks)</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? Added { get; init; }
 
+    /// <summary>Number of items removed (e.g., lines for text files, cells for notebooks)</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? Removed { get; init; }
 }

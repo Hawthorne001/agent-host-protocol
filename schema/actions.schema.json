@@ -2695,10 +2695,12 @@
       "type": "object",
       "properties": {
         "uri": {
-          "$ref": "#/$defs/URI"
+          "$ref": "#/$defs/URI",
+          "description": "URI of the file on this side of the edit"
         },
         "content": {
-          "$ref": "#/$defs/ContentRef"
+          "$ref": "#/$defs/ContentRef",
+          "description": "Reference to the file content on this side of the edit"
         }
       },
       "required": [
@@ -2710,10 +2712,12 @@
       "type": "object",
       "properties": {
         "added": {
-          "type": "number"
+          "type": "number",
+          "description": "Number of items added (e.g., lines for text files, cells for notebooks)"
         },
         "removed": {
-          "type": "number"
+          "type": "number",
+          "description": "Number of items removed (e.g., lines for text files, cells for notebooks)"
         }
       }
     },

@@ -5297,7 +5297,9 @@ public struct ToolCallMcpContributor: Codable, Sendable {
 }
 
 public struct FileEditSide: Codable, Sendable {
+    /// URI of the file on this side of the edit
     public var uri: String
+    /// Reference to the file content on this side of the edit
     public var content: ContentRef
 
     public init(
@@ -5310,7 +5312,9 @@ public struct FileEditSide: Codable, Sendable {
 }
 
 public struct FileEditDiffStats: Codable, Sendable {
+    /// Number of items added (e.g., lines for text files, cells for notebooks)
     public var added: Int?
+    /// Number of items removed (e.g., lines for text files, cells for notebooks)
     public var removed: Int?
 
     public init(

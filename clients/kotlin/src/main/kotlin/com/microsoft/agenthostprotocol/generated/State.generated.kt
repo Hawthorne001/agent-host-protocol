@@ -4523,13 +4523,25 @@ data class ToolCallMcpContributor(
 
 @Serializable
 data class FileEditSide(
+    /**
+     * URI of the file on this side of the edit
+     */
     val uri: String,
+    /**
+     * Reference to the file content on this side of the edit
+     */
     val content: ContentRef
 )
 
 @Serializable
 data class FileEditDiffStats(
+    /**
+     * Number of items added (e.g., lines for text files, cells for notebooks)
+     */
     val added: Long? = null,
+    /**
+     * Number of items removed (e.g., lines for text files, cells for notebooks)
+     */
     val removed: Long? = null
 )
 

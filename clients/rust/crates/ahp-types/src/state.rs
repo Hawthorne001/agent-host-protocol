@@ -4640,15 +4640,19 @@ pub struct ToolCallMcpContributor {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileEditSide {
+    /// URI of the file on this side of the edit
     pub uri: Uri,
+    /// Reference to the file content on this side of the edit
     pub content: ContentRef,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FileEditDiffStats {
+    /// Number of items added (e.g., lines for text files, cells for notebooks)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub added: Option<i64>,
+    /// Number of items removed (e.g., lines for text files, cells for notebooks)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub removed: Option<i64>,
 }
