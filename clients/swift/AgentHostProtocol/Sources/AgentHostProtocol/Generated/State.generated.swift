@@ -857,8 +857,12 @@ public enum McpAuthRequiredReason: Codable, Sendable, Equatable {
 
 /// Computation lifecycle of a {@link ChangesetState}.
 public enum ChangesetStatus: Codable, Sendable, Equatable {
-    /// The server is still computing the contents of this changeset.
+    /// The server is computing this changeset for the first time.
     case computing
+    /// The server is recomputing this changeset. {@link ChangesetState.files}
+    /// remains the previous completed result while recomputation is in progress,
+    /// including when that result is an empty array.
+    case recomputing
     /// The changeset has been fully computed and is up-to-date.
     case ready
     /// Computation failed. The cause is described by
@@ -872,6 +876,7 @@ public enum ChangesetStatus: Codable, Sendable, Equatable {
         let raw = try container.decode(String.self)
         switch raw {
         case "computing": self = .computing
+        case "recomputing": self = .recomputing
         case "ready": self = .ready
         case "error": self = .error
         default: self = .unknown(raw)
@@ -882,6 +887,7 @@ public enum ChangesetStatus: Codable, Sendable, Equatable {
         var container = encoder.singleValueContainer()
         switch self {
         case .computing: try container.encode("computing")
+        case .recomputing: try container.encode("recomputing")
         case .ready: try container.encode("ready")
         case .error: try container.encode("error")
         case .unknown(let raw): try container.encode(raw)

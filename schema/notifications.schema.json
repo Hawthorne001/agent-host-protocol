@@ -6507,6 +6507,7 @@
     "ChangesetStatus": {
       "enum": [
         "computing",
+        "recomputing",
         "ready",
         "error"
       ],

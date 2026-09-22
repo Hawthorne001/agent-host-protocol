@@ -867,9 +867,15 @@ internal object McpAuthRequiredReasonSerializer : KSerializer<McpAuthRequiredRea
 value class ChangesetStatus(val rawValue: String) {
     companion object {
         /**
-         * The server is still computing the contents of this changeset.
+         * The server is computing this changeset for the first time.
          */
         val COMPUTING: ChangesetStatus = ChangesetStatus("computing")
+        /**
+         * The server is recomputing this changeset. {@link ChangesetState.files}
+         * remains the previous completed result while recomputation is in progress,
+         * including when that result is an empty array.
+         */
+        val RECOMPUTING: ChangesetStatus = ChangesetStatus("recomputing")
         /**
          * The changeset has been fully computed and is up-to-date.
          */

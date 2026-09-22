@@ -9127,7 +9127,7 @@
     },
     "ChangesetStatusChangedAction": {
       "type": "object",
-      "description": "The {@link ChangesetState.status} for this changeset transitioned (e.g.\n`computing → ready`). The error payload is set together with `status`\nwhenever it transitions to {@link ChangesetStatus.Error | Error}.",
+      "description": "The {@link ChangesetState.status} for this changeset transitioned (e.g.\n`computing → ready` or `ready → recomputing`). The error payload is set\ntogether with `status` whenever it transitions to\n{@link ChangesetStatus.Error | Error}.",
       "properties": {
         "type": {
           "const": "changeset/statusChanged"
@@ -10635,6 +10635,7 @@
     "ChangesetStatus": {
       "enum": [
         "computing",
+        "recomputing",
         "ready",
         "error"
       ],

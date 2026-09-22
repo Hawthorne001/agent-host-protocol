@@ -412,8 +412,12 @@ const (
 type ChangesetStatus string
 
 const (
-	// The server is still computing the contents of this changeset.
+	// The server is computing this changeset for the first time.
 	ChangesetStatusComputing ChangesetStatus = "computing"
+	// The server is recomputing this changeset. {@link ChangesetState.files}
+	// remains the previous completed result while recomputation is in progress,
+	// including when that result is an empty array.
+	ChangesetStatusRecomputing ChangesetStatus = "recomputing"
 	// The changeset has been fully computed and is up-to-date.
 	ChangesetStatusReady ChangesetStatus = "ready"
 	// Computation failed. The cause is described by

@@ -91,7 +91,7 @@ Each concrete (expanded) changeset URI is its own subscribable resource.
 
 ```typescript
 ChangesetState {
-  status: 'computing' | 'ready' | 'error'
+  status: 'computing' | 'recomputing' | 'ready' | 'error'
   error?: ErrorInfo
   files: ChangesetFile[]
   operations?: ChangesetOperation[]
@@ -105,12 +105,19 @@ ChangesetFile {
 }
 ```
 
+`computing` means the host is producing the first result and no completed
+result is available yet. `recomputing` means the host is refreshing an existing
+result; while it does so, `files` remains the previous completed result,
+including when that result is an empty array. This lets clients distinguish an
+initial empty placeholder from a cached empty result without inspecting the
+array.
+
 Updates flow through changeset-scoped actions, broadcast to subscribers
 of the changeset URI:
 
 | Type                                | Client-dispatchable? | When                                                                         |
 | ----------------------------------- | -------------------- | ---------------------------------------------------------------------------- |
-| `changeset/statusChanged`           | No                   | `status` transitioned (e.g. `computing → ready`).                            |
+| `changeset/statusChanged`           | No                   | `status` transitioned (e.g. `computing → ready` or `ready → recomputing`).   |
 | `changeset/fileSet`                 | No                   | Upsert a `ChangesetFile` (new or replacing existing by `id`).                |
 | `changeset/fileRemoved`             | No                   | A file is no longer in the changeset.                                        |
 | `changeset/filesReviewChanged`      | Yes                  | A reviewer toggled the `reviewed` flag on one or more files.                 |
@@ -235,10 +242,11 @@ a JSON-RPC error.
 2. The client picks catalogue entries whose template variables it can
    satisfy and subscribes to the resulting URIs.
 3. The server returns a `ChangesetState` snapshot (`status: 'computing'`
-   is allowed if scanning is async) and can push `changeset/contentChanged`
-   for an initial batched file snapshot, optionally including operations or
-   error details, followed by narrower `changeset/*` actions as files or
-   operations change.
+   is allowed if the initial scan is async). For a later refresh, the server
+   transitions to `recomputing` and keeps the previous completed `files` until
+   the replacement is available. It can push `changeset/contentChanged` for a
+   batched file snapshot, optionally including operations or error details,
+   followed by narrower `changeset/*` actions as files or operations change.
 4. The user invokes a `ChangesetOperation`. The client calls
    `invokeChangesetOperation`. The server applies the operation and
    emits any resulting changeset updates.

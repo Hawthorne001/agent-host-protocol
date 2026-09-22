@@ -518,9 +518,14 @@ public enum McpAuthRequiredReason
 [JsonConverter(typeof(WireEnumConverter<ChangesetStatus>))]
 public enum ChangesetStatus
 {
-    /// <summary>The server is still computing the contents of this changeset.</summary>
+    /// <summary>The server is computing this changeset for the first time.</summary>
     [WireValue("computing")]
     Computing,
+    /// <summary>The server is recomputing this changeset. {@link ChangesetState.files}
+    /// remains the previous completed result while recomputation is in progress,
+    /// including when that result is an empty array.</summary>
+    [WireValue("recomputing")]
+    Recomputing,
     /// <summary>The changeset has been fully computed and is up-to-date.</summary>
     [WireValue("ready")]
     Ready,
