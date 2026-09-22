@@ -3276,6 +3276,14 @@ type FileEdit struct {
 	Diff *json.RawMessage `json:"diff,omitempty"`
 }
 
+// Reference to a command's full captured output.
+type TerminalOutputRef struct {
+	// Content URI, read with `resourceRead`
+	Uri URI `json:"uri"`
+	// Approximate output size in bytes
+	SizeHint *int64 `json:"sizeHint,omitempty"`
+}
+
 // Outcome of a command run in a terminal-style tool, filled in on
 // {@link ToolResultTerminalContent.result} once the command exits.
 type TerminalCommandResult struct {
@@ -3288,6 +3296,11 @@ type TerminalCommandResult struct {
 	Preview *string `json:"preview,omitempty"`
 	// Whether `preview` is known to be incomplete or truncated
 	Truncated *bool `json:"truncated,omitempty"`
+	// Reference to the command's full captured output.
+	//
+	// The producing peer defines its retention period. Consumers must handle
+	// `NotFound` if the artifact has been removed or its owning session ended.
+	FullOutput *TerminalOutputRef `json:"fullOutput,omitempty"`
 }
 
 // Lightweight terminal metadata exposed on the root state.

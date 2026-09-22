@@ -1560,6 +1560,18 @@ export interface ToolResultTerminalContent {
 }
 
 /**
+ * Reference to a command's full captured output.
+ *
+ * @category Tool Result Content
+ */
+export interface TerminalOutputRef {
+  /** Content URI, read with `resourceRead` */
+  uri: URI;
+  /** Approximate output size in bytes */
+  sizeHint?: number;
+}
+
+/**
  * Outcome of a command run in a terminal-style tool, filled in on
  * {@link ToolResultTerminalContent.result} once the command exits.
  *
@@ -1577,6 +1589,13 @@ export interface TerminalCommandResult {
   preview?: string;
   /** Whether `preview` is known to be incomplete or truncated */
   truncated?: boolean;
+  /**
+   * Reference to the command's full captured output.
+   *
+   * The producing peer defines its retention period. Consumers must handle
+   * `NotFound` if the artifact has been removed or its owning session ended.
+   */
+  fullOutput?: TerminalOutputRef;
 }
 
 /**

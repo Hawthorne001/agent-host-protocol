@@ -839,6 +839,7 @@ const STATE_STRUCTS: { name: string; omitDiscriminants?: boolean; goName?: strin
   { name: 'ToolCallClientContributor' },
   { name: 'ToolCallMcpContributor' },
   { name: 'FileEdit' },
+  { name: 'TerminalOutputRef' },
   { name: 'TerminalCommandResult' },
   { name: 'TerminalInfo' },
   { name: 'TerminalClientClaim' },

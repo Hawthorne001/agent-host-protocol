@@ -4509,6 +4509,23 @@
         "title"
       ]
     },
+    "TerminalOutputRef": {
+      "type": "object",
+      "description": "Reference to a command's full captured output.",
+      "properties": {
+        "uri": {
+          "$ref": "#/$defs/URI",
+          "description": "Content URI, read with `resourceRead`"
+        },
+        "sizeHint": {
+          "type": "number",
+          "description": "Approximate output size in bytes"
+        }
+      },
+      "required": [
+        "uri"
+      ]
+    },
     "TerminalCommandResult": {
       "type": "object",
       "description": "Outcome of a command run in a terminal-style tool, filled in on\n{@link ToolResultTerminalContent.result} once the command exits.",
@@ -4524,6 +4541,10 @@
         "truncated": {
           "type": "boolean",
           "description": "Whether `preview` is known to be incomplete or truncated"
+        },
+        "fullOutput": {
+          "$ref": "#/$defs/TerminalOutputRef",
+          "description": "Reference to the command's full captured output.\n\nThe producing peer defines its retention period. Consumers must handle\n`NotFound` if the artifact has been removed or its owning session ended."
         }
       }
     },
