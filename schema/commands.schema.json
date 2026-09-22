@@ -205,6 +205,10 @@
           "$ref": "#/$defs/AutomationRunCancellationCapability",
           "description": "Present when clients may request cancellation of `pending` or `running`\nautomation runs."
         },
+        "scheduledRunLimits": {
+          "$ref": "#/$defs/AutomationScheduledRunLimitsCapability",
+          "description": "Present when the host enforces {@link AutomationDefinition.scheduledRunLimit}\nand reports usage through {@link AutomationEntry.scheduledRunCount}. Absence\nmeans the host ignores any `scheduledRunLimit` value and never limits\nscheduled runs."
+        },
         "runHistoryLimit": {
           "type": "number",
           "description": "Maximum terminal entries retained in {@link AutomationEntry.runs}. Active\nruns are not counted toward the limit. Absence means the retention limit is\nimplementation-defined."
@@ -229,6 +233,11 @@
     "AutomationRunCancellationCapability": {
       "type": "object",
       "description": "Presence capability for {@link AutomationRunCancelRequestedAction |\n`automationRun/cancelRequested`}.\n\nThe empty object means \"supported.\" Clients may dispatch the action for\n`pending` or `running` runs; terminal runs cannot be cancelled.",
+      "properties": {}
+    },
+    "AutomationScheduledRunLimitsCapability": {
+      "type": "object",
+      "description": "Presence capability for host-enforced scheduled-run limits\n({@link AutomationDefinition.scheduledRunLimit} /\n{@link AutomationEntry.scheduledRunCount}).\n\nThe empty object means \"supported\"; fields are reserved for future\nlimit-specific options. When absent, hosts do not enforce a scheduled-run\ncap and clients SHOULD hide any related affordance.",
       "properties": {}
     },
     "PingParams": {
@@ -6811,6 +6820,35 @@
         "events"
       ]
     },
+    "AutomationScheduledRunLimitSetPatch": {
+      "type": "object",
+      "description": "Sets the finite scheduled-run cap in an automation patch.",
+      "properties": {
+        "kind": {
+          "const": "set"
+        },
+        "value": {
+          "type": "number",
+          "description": "Positive-integer cap on scheduled runs."
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ]
+    },
+    "AutomationScheduledRunLimitClearPatch": {
+      "type": "object",
+      "description": "Removes the scheduled-run cap in an automation patch.",
+      "properties": {
+        "kind": {
+          "const": "clear"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
     "AutomationTriggerEventDefinition": {
       "type": "object",
       "description": "Describes one host-defined trigger event.",
@@ -6924,6 +6962,10 @@
           },
           "description": "Automatic triggers. An empty list means manual-only."
         },
+        "scheduledRunLimit": {
+          "type": "number",
+          "description": "Optional cap on how many **scheduled** runs this automation may start\nwithin its current allowance. Absent means unlimited. When present it MUST\nbe a positive integer.\n\nThe limit governs only automatic runs created by triggers; manual runs via\n{@link RunAutomationParams | runAutomation} never consume the allowance and\nare never blocked by it. The host counts a scheduled run against the\nallowance atomically when it admits the run — a consumed slot is not\nrefunded if that run is later cancelled or fails.\n\nConsumption is tracked by the host-owned\n{@link AutomationEntry.scheduledRunCount}. When the count reaches this\nlimit the host stops automatic scheduling (equivalent to clearing\n{@link AutomationDefinition.enabled}) while retaining this value. A\nsubsequent disabled→enabled transition starts a fresh allowance; editing\nthis limit while enabled preserves the existing count. See the\n{@link /guide/automations | Automations Guide}.\n\nHosts advertise support with\n{@link AutomationCapabilities.scheduledRunLimits}."
+        },
         "_meta": {
           "type": "object",
           "additionalProperties": {},
@@ -6953,6 +6995,10 @@
         "nextRunAt": {
           "type": "string",
           "description": "Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending."
+        },
+        "scheduledRunCount": {
+          "type": "number",
+          "description": "Host-owned count of scheduled runs consumed against the current allowance\ndefined by {@link AutomationDefinition.scheduledRunLimit}.\n\nThis is authoritative usage for the **current** allowance, not a lifetime\ntotal: the host resets it to `0` when a disabled→enabled transition starts\na fresh allowance, and when a finite cap is first added to a previously\nunlimited automation. It is NOT reconstructed from {@link runs}, which is a\nbounded, prunable window rather than a complete run ledger. The host\nincrements it atomically when it admits a scheduled run, including a run\nthat is later cancelled or fails.\n\nAbsent when the host does not advertise\n{@link AutomationCapabilities.scheduledRunLimits} or the automation has no\nfinite cap. Clients render remaining allowance as\n`scheduledRunLimit - scheduledRunCount`; they never maintain their own\ncount."
         },
         "runs": {
           "type": "array",
@@ -9455,6 +9501,10 @@
           },
           "description": "Complete replacement {@link AutomationDefinition.triggers}. The host\nvalidates event ids and normalizes event-trigger titles and descriptions."
         },
+        "scheduledRunLimit": {
+          "$ref": "#/$defs/AutomationScheduledRunLimitPatch",
+          "description": "Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the\ncurrent cap unchanged; supply a\n{@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a\npositive integer to set or change the cap, or a\n{@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to\nreturn the automation to unlimited scheduling.\n\nChanging a cap while enabled preserves usage. Setting the first finite cap\non a previously unlimited automation starts a fresh allowance. Hosts reject\nthis field when they do not advertise\n{@link AutomationCapabilities.scheduledRunLimits}."
+        },
         "_meta": {
           "type": "object",
           "additionalProperties": {},
@@ -10735,6 +10785,17 @@
       ],
       "type": "string",
       "description": "Discriminant for pending message kinds."
+    },
+    "AutomationScheduledRunLimitPatch": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/AutomationScheduledRunLimitSetPatch"
+        },
+        {
+          "$ref": "#/$defs/AutomationScheduledRunLimitClearPatch"
+        }
+      ],
+      "description": "A change to {@link AutomationDefinition.scheduledRunLimit} in a patch."
     },
     "ChatToolCallConfirmedAction": {
       "oneOf": [

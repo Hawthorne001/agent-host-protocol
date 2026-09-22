@@ -12,6 +12,7 @@ import type {
   AutomationDefinition,
   AutomationEntry,
   AutomationOperation,
+  AutomationScheduledRunLimitPatch,
   AutomationSessionTemplate,
   AutomationState,
   AutomationTrigger,
@@ -42,6 +43,20 @@ export interface AutomationDefinitionPatch {
    * validates event ids and normalizes event-trigger titles and descriptions.
    */
   triggers?: AutomationTrigger[];
+  /**
+   * Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the
+   * current cap unchanged; supply a
+   * {@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a
+   * positive integer to set or change the cap, or a
+   * {@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to
+   * return the automation to unlimited scheduling.
+   *
+   * Changing a cap while enabled preserves usage. Setting the first finite cap
+   * on a previously unlimited automation starts a fresh allowance. Hosts reject
+   * this field when they do not advertise
+   * {@link AutomationCapabilities.scheduledRunLimits}.
+   */
+  scheduledRunLimit?: AutomationScheduledRunLimitPatch;
   /** Complete replacement {@link AutomationDefinition._meta}. */
   _meta?: Record<string, unknown>;
 }

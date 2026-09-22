@@ -628,6 +628,18 @@ public enum AutomationTriggerKind
     Event,
 }
 
+/// <summary>Discriminant for a scheduled-run-limit edit carried in an automation patch.</summary>
+[JsonConverter(typeof(WireEnumConverter<AutomationScheduledRunLimitPatchKind>))]
+public enum AutomationScheduledRunLimitPatchKind
+{
+    /// <summary>Set the finite scheduled-run cap to a positive integer.</summary>
+    [WireValue("set")]
+    Set,
+    /// <summary>Remove the cap, returning to unlimited scheduling.</summary>
+    [WireValue("clear")]
+    Clear,
+}
+
 /// <summary>Lifecycle status of one automation run.
 ///
 /// `completed`, `failed`, and `cancelled` are terminal. A run remains `running`
@@ -5221,6 +5233,29 @@ public sealed record AutomationDefinition
     /// <summary>Automatic triggers. An empty list means manual-only.</summary>
     public required List<AutomationTrigger> Triggers { get; init; }
 
+    /// <summary>Optional cap on how many **scheduled** runs this automation may start
+    /// within its current allowance. Absent means unlimited. When present it MUST
+    /// be a positive integer.
+    ///
+    /// The limit governs only automatic runs created by triggers; manual runs via
+    /// {@link RunAutomationParams | runAutomation} never consume the allowance and
+    /// are never blocked by it. The host counts a scheduled run against the
+    /// allowance atomically when it admits the run — a consumed slot is not
+    /// refunded if that run is later cancelled or fails.
+    ///
+    /// Consumption is tracked by the host-owned
+    /// {@link AutomationEntry.scheduledRunCount}. When the count reaches this
+    /// limit the host stops automatic scheduling (equivalent to clearing
+    /// {@link AutomationDefinition.enabled}) while retaining this value. A
+    /// subsequent disabled→enabled transition starts a fresh allowance; editing
+    /// this limit while enabled preserves the existing count. See the
+    /// {@link /guide/automations | Automations Guide}.
+    ///
+    /// Hosts advertise support with
+    /// {@link AutomationCapabilities.scheduledRunLimits}.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? ScheduledRunLimit { get; init; }
+
     /// <summary>Opaque implementation-defined metadata. Clients MUST preserve unknown
     /// entries when updating the definition.</summary>
     [JsonPropertyName("_meta")]
@@ -5256,10 +5291,39 @@ public sealed record AutomationDefinitionPatch
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<AutomationTrigger>? Triggers { get; init; }
 
+    /// <summary>Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the
+    /// current cap unchanged; supply a
+    /// {@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a
+    /// positive integer to set or change the cap, or a
+    /// {@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to
+    /// return the automation to unlimited scheduling.
+    ///
+    /// Changing a cap while enabled preserves usage. Setting the first finite cap
+    /// on a previously unlimited automation starts a fresh allowance. Hosts reject
+    /// this field when they do not advertise
+    /// {@link AutomationCapabilities.scheduledRunLimits}.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AutomationScheduledRunLimitPatch? ScheduledRunLimit { get; init; }
+
     /// <summary>Complete replacement {@link AutomationDefinition._meta}.</summary>
     [JsonPropertyName("_meta")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, JsonElement>? Meta { get; init; }
+}
+
+/// <summary>Sets the finite scheduled-run cap in an automation patch.</summary>
+public sealed record AutomationScheduledRunLimitSetPatch
+{
+    public AutomationScheduledRunLimitPatchKind Kind { get; init; }
+
+    /// <summary>Positive-integer cap on scheduled runs.</summary>
+    public long Value { get; init; }
+}
+
+/// <summary>Removes the scheduled-run cap in an automation patch.</summary>
+public sealed record AutomationScheduledRunLimitClearPatch
+{
+    public AutomationScheduledRunLimitPatchKind Kind { get; init; }
 }
 
 /// <summary>Authoritative state of one automation in {@link AutomationState.entries}.
@@ -5278,6 +5342,25 @@ public sealed class AutomationEntry
     /// <summary>Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NextRunAt { get; set; }
+
+    /// <summary>Host-owned count of scheduled runs consumed against the current allowance
+    /// defined by {@link AutomationDefinition.scheduledRunLimit}.
+    ///
+    /// This is authoritative usage for the **current** allowance, not a lifetime
+    /// total: the host resets it to `0` when a disabled→enabled transition starts
+    /// a fresh allowance, and when a finite cap is first added to a previously
+    /// unlimited automation. It is NOT reconstructed from {@link runs}, which is a
+    /// bounded, prunable window rather than a complete run ledger. The host
+    /// increments it atomically when it admits a scheduled run, including a run
+    /// that is later cancelled or fails.
+    ///
+    /// Absent when the host does not advertise
+    /// {@link AutomationCapabilities.scheduledRunLimits} or the automation has no
+    /// finite cap. Clients render remaining allowance as
+    /// `scheduledRunLimit - scheduledRunCount`; they never maintain their own
+    /// count.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? ScheduledRunCount { get; set; }
 
     /// <summary>Newest-first retained run summaries. This is a bounded window; use
     /// {@link FetchAutomationRunsParams | fetchAutomationRuns} when
@@ -6118,6 +6201,33 @@ internal sealed class AutomationTriggerConverter : UnionConverter<AutomationTrig
             {
         ["schedule"] = typeof(AutomationScheduleTrigger),
         ["event"] = typeof(AutomationEventTrigger),
+            },
+            allowUnknown: false)
+    {
+    }
+}
+
+/// <summary>AutomationScheduledRunLimitPatch changes an automation's scheduled-run cap.</summary>
+[JsonConverter(typeof(AutomationScheduledRunLimitPatchConverter))]
+public sealed class AutomationScheduledRunLimitPatch : AhpUnion
+{
+    /// <summary>Creates an empty AutomationScheduledRunLimitPatch (no active variant).</summary>
+    public AutomationScheduledRunLimitPatch() { }
+
+    /// <summary>Creates a AutomationScheduledRunLimitPatch wrapping the given variant value.</summary>
+    public AutomationScheduledRunLimitPatch(object? value) : base(value) { }
+}
+
+/// <summary>System.Text.Json converter for the AutomationScheduledRunLimitPatch discriminated union.</summary>
+internal sealed class AutomationScheduledRunLimitPatchConverter : UnionConverter<AutomationScheduledRunLimitPatch>
+{
+    public AutomationScheduledRunLimitPatchConverter()
+        : base(
+            discriminator: "kind",
+            variants: new Dictionary<string, Type>
+            {
+        ["set"] = typeof(AutomationScheduledRunLimitSetPatch),
+        ["clear"] = typeof(AutomationScheduledRunLimitClearPatch),
             },
             allowUnknown: false)
     {

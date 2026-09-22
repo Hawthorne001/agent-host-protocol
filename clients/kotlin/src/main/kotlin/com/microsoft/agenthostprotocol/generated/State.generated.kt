@@ -1089,6 +1089,23 @@ enum class AutomationTriggerKind {
 }
 
 /**
+ * Discriminant for a scheduled-run-limit edit carried in an automation patch.
+ */
+@Serializable
+enum class AutomationScheduledRunLimitPatchKind {
+    /**
+     * Set the finite scheduled-run cap to a positive integer.
+     */
+    @SerialName("set")
+    SET,
+    /**
+     * Remove the cap, returning to unlimited scheduling.
+     */
+    @SerialName("clear")
+    CLEAR
+}
+
+/**
  * Lifecycle status of one automation run.
  *
  * `completed`, `failed`, and `cancelled` are terminal. A run remains `running`
@@ -5378,6 +5395,29 @@ data class AutomationDefinition(
      */
     val triggers: List<AutomationTrigger>,
     /**
+     * Optional cap on how many **scheduled** runs this automation may start
+     * within its current allowance. Absent means unlimited. When present it MUST
+     * be a positive integer.
+     *
+     * The limit governs only automatic runs created by triggers; manual runs via
+     * {@link RunAutomationParams | runAutomation} never consume the allowance and
+     * are never blocked by it. The host counts a scheduled run against the
+     * allowance atomically when it admits the run — a consumed slot is not
+     * refunded if that run is later cancelled or fails.
+     *
+     * Consumption is tracked by the host-owned
+     * {@link AutomationEntry.scheduledRunCount}. When the count reaches this
+     * limit the host stops automatic scheduling (equivalent to clearing
+     * {@link AutomationDefinition.enabled}) while retaining this value. A
+     * subsequent disabled→enabled transition starts a fresh allowance; editing
+     * this limit while enabled preserves the existing count. See the
+     * {@link /guide/automations | Automations Guide}.
+     *
+     * Hosts advertise support with
+     * {@link AutomationCapabilities.scheduledRunLimits}.
+     */
+    val scheduledRunLimit: Long? = null,
+    /**
      * Opaque implementation-defined metadata. Clients MUST preserve unknown
      * entries when updating the definition.
      */
@@ -5410,10 +5450,38 @@ data class AutomationDefinitionPatch(
      */
     val triggers: List<AutomationTrigger>? = null,
     /**
+     * Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the
+     * current cap unchanged; supply a
+     * {@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a
+     * positive integer to set or change the cap, or a
+     * {@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to
+     * return the automation to unlimited scheduling.
+     *
+     * Changing a cap while enabled preserves usage. Setting the first finite cap
+     * on a previously unlimited automation starts a fresh allowance. Hosts reject
+     * this field when they do not advertise
+     * {@link AutomationCapabilities.scheduledRunLimits}.
+     */
+    val scheduledRunLimit: AutomationScheduledRunLimitPatch? = null,
+    /**
      * Complete replacement {@link AutomationDefinition._meta}.
      */
     @SerialName("_meta")
     val meta: Map<String, JsonElement>? = null
+)
+
+@Serializable
+data class AutomationScheduledRunLimitSetPatch(
+    val kind: AutomationScheduledRunLimitPatchKind,
+    /**
+     * Positive-integer cap on scheduled runs.
+     */
+    val value: Long
+)
+
+@Serializable
+data class AutomationScheduledRunLimitClearPatch(
+    val kind: AutomationScheduledRunLimitPatchKind
 )
 
 @Serializable
@@ -5430,6 +5498,25 @@ data class AutomationEntry(
      * Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending.
      */
     val nextRunAt: String? = null,
+    /**
+     * Host-owned count of scheduled runs consumed against the current allowance
+     * defined by {@link AutomationDefinition.scheduledRunLimit}.
+     *
+     * This is authoritative usage for the **current** allowance, not a lifetime
+     * total: the host resets it to `0` when a disabled→enabled transition starts
+     * a fresh allowance, and when a finite cap is first added to a previously
+     * unlimited automation. It is NOT reconstructed from {@link runs}, which is a
+     * bounded, prunable window rather than a complete run ledger. The host
+     * increments it atomically when it admits a scheduled run, including a run
+     * that is later cancelled or fails.
+     *
+     * Absent when the host does not advertise
+     * {@link AutomationCapabilities.scheduledRunLimits} or the automation has no
+     * finite cap. Clients render remaining allowance as
+     * `scheduledRunLimit - scheduledRunCount`; they never maintain their own
+     * count.
+     */
+    val scheduledRunCount: Long? = null,
     /**
      * Newest-first retained run summaries. This is a bounded window; use
      * {@link FetchAutomationRunsParams | fetchAutomationRuns} when
@@ -6833,6 +6920,50 @@ internal object AutomationTriggerSerializer : KSerializer<AutomationTrigger> {
         val discriminant = when (value) {
             is AutomationTriggerSchedule -> "schedule"
             is AutomationTriggerEvent -> "event"
+        }
+        if (discriminant != null) encodedObject["kind"] = JsonPrimitive(discriminant)
+        output.encodeJsonElement(JsonObject(encodedObject))
+    }
+}
+
+@Serializable(with = AutomationScheduledRunLimitPatchSerializer::class)
+sealed interface AutomationScheduledRunLimitPatch
+
+@JvmInline
+value class AutomationScheduledRunLimitPatchSet(val value: AutomationScheduledRunLimitSetPatch) : AutomationScheduledRunLimitPatch
+@JvmInline
+value class AutomationScheduledRunLimitPatchClear(val value: AutomationScheduledRunLimitClearPatch) : AutomationScheduledRunLimitPatch
+
+internal object AutomationScheduledRunLimitPatchSerializer : KSerializer<AutomationScheduledRunLimitPatch> {
+    override val descriptor: SerialDescriptor =
+        buildClassSerialDescriptor("AutomationScheduledRunLimitPatch")
+
+    override fun deserialize(decoder: Decoder): AutomationScheduledRunLimitPatch {
+        val input = decoder as? JsonDecoder
+            ?: error("AutomationScheduledRunLimitPatch can only be deserialized from JSON")
+        val element = input.decodeJsonElement()
+        val obj = element as? JsonObject
+            ?: error("Expected JsonObject for AutomationScheduledRunLimitPatch")
+        val discriminant = (obj["kind"] as? JsonPrimitive)?.content
+            ?: error("Missing kind discriminator on AutomationScheduledRunLimitPatch")
+        return when (discriminant) {
+            "set" -> AutomationScheduledRunLimitPatchSet(input.json.decodeFromJsonElement(AutomationScheduledRunLimitSetPatch.serializer(), element))
+            "clear" -> AutomationScheduledRunLimitPatchClear(input.json.decodeFromJsonElement(AutomationScheduledRunLimitClearPatch.serializer(), element))
+            else -> error("Unknown AutomationScheduledRunLimitPatch discriminator: $discriminant")
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: AutomationScheduledRunLimitPatch) {
+        val output = encoder as? JsonEncoder
+            ?: error("AutomationScheduledRunLimitPatch can only be serialized to JSON")
+        val element: JsonElement = when (value) {
+            is AutomationScheduledRunLimitPatchSet -> output.json.encodeToJsonElement(AutomationScheduledRunLimitSetPatch.serializer(), value.value)
+            is AutomationScheduledRunLimitPatchClear -> output.json.encodeToJsonElement(AutomationScheduledRunLimitClearPatch.serializer(), value.value)
+        }
+        val encodedObject = element.jsonObject.toMutableMap()
+        val discriminant = when (value) {
+            is AutomationScheduledRunLimitPatchSet -> "set"
+            is AutomationScheduledRunLimitPatchClear -> "clear"
         }
         if (discriminant != null) encodedObject["kind"] = JsonPrimitive(discriminant)
         output.encodeJsonElement(JsonObject(encodedObject))

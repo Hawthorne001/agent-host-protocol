@@ -1,0 +1,60 @@
+{
+  "name": "automation-scheduled-run-limit-snapshot",
+  "group": "A",
+  "description": "A catalogue snapshot preserves the definition scheduled-run cap and the host-owned scheduled-run usage count.",
+  "type": "Snapshot",
+  "input": {
+    "resource": "ahp-automations://",
+    "state": {
+      "entries": [{
+        "resource": "ahp-automation:/capped",
+        "definition": {
+          "title": "Capped triage",
+          "message": { "text": "Triage the issue", "origin": { "kind": "automation" } },
+          "session": { "provider": "copilot" },
+          "enabled": true,
+          "triggers": [{
+            "id": "every-three-hours",
+            "kind": "schedule",
+            "schedule": { "expression": "0 */3 * * *", "timeZone": "Etc/UTC" },
+            "misfirePolicy": "runOnce"
+          }],
+          "scheduledRunLimit": 3
+        },
+        "scheduledRunCount": 2,
+        "runs": [],
+        "operations": ["update", "remove", "run"],
+        "createdAt": "2026-08-01T00:00:00Z",
+        "modifiedAt": "2026-08-05T12:00:00Z"
+      }]
+    },
+    "fromSeq": 9
+  },
+  "acceptableOutputs": [{
+    "resource": "ahp-automations://",
+    "state": {
+      "entries": [{
+        "resource": "ahp-automation:/capped",
+        "definition": {
+          "title": "Capped triage",
+          "message": { "text": "Triage the issue", "origin": { "kind": "automation" } },
+          "session": { "provider": "copilot" },
+          "enabled": true,
+          "triggers": [{
+            "id": "every-three-hours",
+            "kind": "schedule",
+            "schedule": { "expression": "0 */3 * * *", "timeZone": "Etc/UTC" },
+            "misfirePolicy": "runOnce"
+          }],
+          "scheduledRunLimit": 3
+        },
+        "scheduledRunCount": 2,
+        "runs": [],
+        "operations": ["update", "remove", "run"],
+        "createdAt": "2026-08-01T00:00:00Z",
+        "modifiedAt": "2026-08-05T12:00:00Z"
+      }]
+    },
+    "fromSeq": 9
+  }]
+}

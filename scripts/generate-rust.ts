@@ -767,6 +767,7 @@ const STATE_ENUMS = [
   'ChangesetStatus', 'ChangesetOperationStatus', 'ChangesetOperationScope', 'ResourceChangeType',
   'SessionOriginKind',
   'AutomationOperation', 'AutomationMisfirePolicy', 'AutomationTriggerKind',
+  'AutomationScheduledRunLimitPatchKind',
   'AutomationRunStatus', 'AutomationRunOriginKind',
 ];
 
@@ -934,6 +935,8 @@ const STATE_STRUCTS: { name: string; omitDiscriminants?: boolean; rustName?: str
   { name: 'AutomationSessionTemplate' },
   { name: 'AutomationDefinition' },
   { name: 'AutomationDefinitionPatch' },
+  { name: 'AutomationScheduledRunLimitSetPatch', omitDiscriminants: true },
+  { name: 'AutomationScheduledRunLimitClearPatch', omitDiscriminants: true },
   { name: 'AutomationEntry' },
   { name: 'AutomationState' },
   { name: 'AutomationManualRunOrigin', omitDiscriminants: true },
@@ -1205,6 +1208,16 @@ const AUTOMATION_TRIGGER_UNION: UnionConfig = {
   ],
 };
 
+const AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION: UnionConfig = {
+  name: 'AutomationScheduledRunLimitPatch',
+  discriminantField: 'kind',
+  doc: 'Change to an automation\'s scheduled-run cap.',
+  variants: [
+    { variantName: 'Set', innerType: 'AutomationScheduledRunLimitSetPatch', wireValue: 'set' },
+    { variantName: 'Clear', innerType: 'AutomationScheduledRunLimitClearPatch', wireValue: 'clear' },
+  ],
+};
+
 const AUTOMATION_RUN_ORIGIN_UNION: UnionConfig = {
   name: 'AutomationRunOrigin',
   discriminantField: 'kind',
@@ -1397,6 +1410,8 @@ function generateStateFile(project: Project): string {
   lines.push(generateDiscriminatedUnion(project, SESSION_ORIGIN_UNION));
   lines.push('');
   lines.push(generateDiscriminatedUnion(project, AUTOMATION_TRIGGER_UNION));
+  lines.push('');
+  lines.push(generateDiscriminatedUnion(project, AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION));
   lines.push('');
   lines.push(generateDiscriminatedUnion(project, AUTOMATION_RUN_ORIGIN_UNION));
   lines.push('');
@@ -1705,6 +1720,7 @@ const COMMAND_STRUCTS: { name: string; omitDiscriminants?: boolean; rustName?: s
   { name: 'AutomationCreateCapability' },
   { name: 'AutomationScheduleCapabilities' },
   { name: 'AutomationRunCancellationCapability' },
+  { name: 'AutomationScheduledRunLimitsCapability' },
   { name: 'Implementation' },
   { name: 'ReconnectParams' },
   { name: 'ReconnectReplayResult', omitDiscriminants: true },
@@ -2231,6 +2247,7 @@ function checkExhaustiveness(project: Project): void {
     'ReconnectResult',
     'SessionOrigin',
     'AutomationTrigger',
+    'AutomationScheduledRunLimitPatch',
     'AutomationRunOrigin',
     'AutomationRunLifecycle',
     'AuthRequiredErrorData',

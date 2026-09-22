@@ -5418,6 +5418,35 @@
         "events"
       ]
     },
+    "AutomationScheduledRunLimitSetPatch": {
+      "type": "object",
+      "description": "Sets the finite scheduled-run cap in an automation patch.",
+      "properties": {
+        "kind": {
+          "const": "set"
+        },
+        "value": {
+          "type": "number",
+          "description": "Positive-integer cap on scheduled runs."
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ]
+    },
+    "AutomationScheduledRunLimitClearPatch": {
+      "type": "object",
+      "description": "Removes the scheduled-run cap in an automation patch.",
+      "properties": {
+        "kind": {
+          "const": "clear"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
     "AutomationTriggerEventDefinition": {
       "type": "object",
       "description": "Describes one host-defined trigger event.",
@@ -5531,6 +5560,10 @@
           },
           "description": "Automatic triggers. An empty list means manual-only."
         },
+        "scheduledRunLimit": {
+          "type": "number",
+          "description": "Optional cap on how many **scheduled** runs this automation may start\nwithin its current allowance. Absent means unlimited. When present it MUST\nbe a positive integer.\n\nThe limit governs only automatic runs created by triggers; manual runs via\n{@link RunAutomationParams | runAutomation} never consume the allowance and\nare never blocked by it. The host counts a scheduled run against the\nallowance atomically when it admits the run — a consumed slot is not\nrefunded if that run is later cancelled or fails.\n\nConsumption is tracked by the host-owned\n{@link AutomationEntry.scheduledRunCount}. When the count reaches this\nlimit the host stops automatic scheduling (equivalent to clearing\n{@link AutomationDefinition.enabled}) while retaining this value. A\nsubsequent disabled→enabled transition starts a fresh allowance; editing\nthis limit while enabled preserves the existing count. See the\n{@link /guide/automations | Automations Guide}.\n\nHosts advertise support with\n{@link AutomationCapabilities.scheduledRunLimits}."
+        },
         "_meta": {
           "type": "object",
           "additionalProperties": {},
@@ -5560,6 +5593,10 @@
         "nextRunAt": {
           "type": "string",
           "description": "Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending."
+        },
+        "scheduledRunCount": {
+          "type": "number",
+          "description": "Host-owned count of scheduled runs consumed against the current allowance\ndefined by {@link AutomationDefinition.scheduledRunLimit}.\n\nThis is authoritative usage for the **current** allowance, not a lifetime\ntotal: the host resets it to `0` when a disabled→enabled transition starts\na fresh allowance, and when a finite cap is first added to a previously\nunlimited automation. It is NOT reconstructed from {@link runs}, which is a\nbounded, prunable window rather than a complete run ledger. The host\nincrements it atomically when it admits a scheduled run, including a run\nthat is later cancelled or fails.\n\nAbsent when the host does not advertise\n{@link AutomationCapabilities.scheduledRunLimits} or the automation has no\nfinite cap. Clients render remaining allowance as\n`scheduledRunLimit - scheduledRunCount`; they never maintain their own\ncount."
         },
         "runs": {
           "type": "array",

@@ -1,0 +1,20 @@
+{
+  "name": "automation-set-scheduled-run-limit-patch",
+  "group": "A",
+  "description": "An update request setting a finite scheduled-run cap carries a set operation on scheduledRunLimit.",
+  "type": "StateAction",
+  "input": {
+    "type": "automation/updateRequested",
+    "resource": "ahp-automation:/capped",
+    "changes": {
+      "scheduledRunLimit": { "kind": "set", "value": 3 }
+    }
+  },
+  "acceptableOutputs": [{
+    "type": "automation/updateRequested",
+    "resource": "ahp-automation:/capped",
+    "changes": {
+      "scheduledRunLimit": { "kind": "set", "value": 3 }
+    }
+  }]
+}

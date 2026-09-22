@@ -34,6 +34,7 @@ AutomationCapabilities {
     minIntervalMinutes?: number
   }
   runCancellation?: {}
+  scheduledRunLimits?: {}
   runHistoryLimit?: number
 }
 ```
@@ -304,6 +305,47 @@ from discovery, its saved descriptors still keep the catalogue readable.
 Unknown configuration entries must survive client edits. Event provenance
 recorded on a run must contain no secrets; it is descriptive context, not a
 payload clients should replay.
+
+## Scheduled run limits
+
+A definition may cap how many **scheduled** runs it starts through the optional
+`scheduledRunLimit` field. Hosts advertise enforcement with the
+`scheduledRunLimits` capability; when it is absent the field is inert and hosts
+never limit scheduling. When present, `scheduledRunLimit` is a positive integer,
+and absence means unlimited.
+
+The cap governs only runs created by automatic triggers. Manual runs via
+`runAutomation` never consume the allowance and are never blocked by it — a host
+continues to advertise the `run` operation even after the scheduled allowance is
+spent, exactly as it does for a disabled automation.
+
+The host owns usage through the authoritative `AutomationEntry.scheduledRunCount`.
+It is the count for the **current allowance**, not a lifetime total, and it is
+not reconstructed from the bounded `runs` window. The host increments it
+atomically when it admits a scheduled run, so a slot is spent even if that run is
+later cancelled or fails before startup. Catch-up runs are scheduled runs and
+consume the allowance; manual runs do not. Clients display remaining allowance as
+`scheduledRunLimit - scheduledRunCount` and never keep their own count.
+
+Reaching the cap stops automatic scheduling as if `enabled` were cleared, while
+the definition retains `scheduledRunLimit`. The allowance resets — the host sets
+`scheduledRunCount` back to `0` — in exactly two cases:
+
+- a disabled→enabled transition (`enabled` changes from `false` to `true`), and
+- the first time a finite cap is added to a previously unlimited automation.
+
+Editing the cap while enabled preserves usage: with two of three runs spent,
+raising the cap to five leaves three remaining. An ordinary edit that does not
+change `enabled` never resets the count.
+
+An `automation/updateRequested` patch changes the cap through its
+`scheduledRunLimit` field, an `AutomationScheduledRunLimitPatch` discriminated
+union: omit it to leave the cap unchanged, send `{ kind: "set", value }` to set
+or change it, or `{ kind: "clear" }` to return the automation to unlimited
+scheduling. Modelling the edit as a union — rather than a nullable number —
+keeps the contradictory "set and clear at once" intent unrepresentable and
+survives every client generator, which would otherwise encode an explicit
+`null` identically to an omitted field.
 
 ## Creating, updating, and removing
 

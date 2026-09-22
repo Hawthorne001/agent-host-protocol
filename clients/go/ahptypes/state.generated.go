@@ -510,6 +510,16 @@ const (
 	AutomationTriggerKindEvent AutomationTriggerKind = "event"
 )
 
+// Discriminant for a scheduled-run-limit edit carried in an automation patch.
+type AutomationScheduledRunLimitPatchKind string
+
+const (
+	// Set the finite scheduled-run cap to a positive integer.
+	AutomationScheduledRunLimitPatchKindSet AutomationScheduledRunLimitPatchKind = "set"
+	// Remove the cap, returning to unlimited scheduling.
+	AutomationScheduledRunLimitPatchKindClear AutomationScheduledRunLimitPatchKind = "clear"
+)
+
 // Lifecycle status of one automation run.
 //
 // `completed`, `failed`, and `cancelled` are terminal. A run remains `running`
@@ -3934,6 +3944,27 @@ type AutomationDefinition struct {
 	Enabled bool `json:"enabled"`
 	// Automatic triggers. An empty list means manual-only.
 	Triggers []AutomationTrigger `json:"triggers"`
+	// Optional cap on how many **scheduled** runs this automation may start
+	// within its current allowance. Absent means unlimited. When present it MUST
+	// be a positive integer.
+	//
+	// The limit governs only automatic runs created by triggers; manual runs via
+	// {@link RunAutomationParams | runAutomation} never consume the allowance and
+	// are never blocked by it. The host counts a scheduled run against the
+	// allowance atomically when it admits the run — a consumed slot is not
+	// refunded if that run is later cancelled or fails.
+	//
+	// Consumption is tracked by the host-owned
+	// {@link AutomationEntry.scheduledRunCount}. When the count reaches this
+	// limit the host stops automatic scheduling (equivalent to clearing
+	// {@link AutomationDefinition.enabled}) while retaining this value. A
+	// subsequent disabled→enabled transition starts a fresh allowance; editing
+	// this limit while enabled preserves the existing count. See the
+	// {@link /guide/automations | Automations Guide}.
+	//
+	// Hosts advertise support with
+	// {@link AutomationCapabilities.scheduledRunLimits}.
+	ScheduledRunLimit *int64 `json:"scheduledRunLimit,omitempty"`
 	// Opaque implementation-defined metadata. Clients MUST preserve unknown
 	// entries when updating the definition.
 	Meta map[string]json.RawMessage `json:"_meta,omitempty"`
@@ -3956,8 +3987,32 @@ type AutomationDefinitionPatch struct {
 	// Complete replacement {@link AutomationDefinition.triggers}. The host
 	// validates event ids and normalizes event-trigger titles and descriptions.
 	Triggers *[]AutomationTrigger `json:"triggers,omitempty"`
+	// Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the
+	// current cap unchanged; supply a
+	// {@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a
+	// positive integer to set or change the cap, or a
+	// {@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to
+	// return the automation to unlimited scheduling.
+	//
+	// Changing a cap while enabled preserves usage. Setting the first finite cap
+	// on a previously unlimited automation starts a fresh allowance. Hosts reject
+	// this field when they do not advertise
+	// {@link AutomationCapabilities.scheduledRunLimits}.
+	ScheduledRunLimit *AutomationScheduledRunLimitPatch `json:"scheduledRunLimit,omitempty"`
 	// Complete replacement {@link AutomationDefinition._meta}.
 	Meta *map[string]json.RawMessage `json:"_meta,omitempty"`
+}
+
+// Sets the finite scheduled-run cap in an automation patch.
+type AutomationScheduledRunLimitSetPatch struct {
+	Kind AutomationScheduledRunLimitPatchKind `json:"kind"`
+	// Positive-integer cap on scheduled runs.
+	Value int64 `json:"value"`
+}
+
+// Removes the scheduled-run cap in an automation patch.
+type AutomationScheduledRunLimitClearPatch struct {
+	Kind AutomationScheduledRunLimitPatchKind `json:"kind"`
 }
 
 // Authoritative state of one automation in {@link AutomationState.entries}.
@@ -3972,6 +4027,23 @@ type AutomationEntry struct {
 	Definition AutomationDefinition `json:"definition"`
 	// Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending.
 	NextRunAt *string `json:"nextRunAt,omitempty"`
+	// Host-owned count of scheduled runs consumed against the current allowance
+	// defined by {@link AutomationDefinition.scheduledRunLimit}.
+	//
+	// This is authoritative usage for the **current** allowance, not a lifetime
+	// total: the host resets it to `0` when a disabled→enabled transition starts
+	// a fresh allowance, and when a finite cap is first added to a previously
+	// unlimited automation. It is NOT reconstructed from {@link runs}, which is a
+	// bounded, prunable window rather than a complete run ledger. The host
+	// increments it atomically when it admits a scheduled run, including a run
+	// that is later cancelled or fails.
+	//
+	// Absent when the host does not advertise
+	// {@link AutomationCapabilities.scheduledRunLimits} or the automation has no
+	// finite cap. Clients render remaining allowance as
+	// `scheduledRunLimit - scheduledRunCount`; they never maintain their own
+	// count.
+	ScheduledRunCount *int64 `json:"scheduledRunCount,omitempty"`
 	// Newest-first retained run summaries. This is a bounded window; use
 	// {@link FetchAutomationRunsParams | fetchAutomationRuns} when
 	// {@link AutomationEntry.runsNextCursor} is present.
@@ -5646,6 +5718,68 @@ func (u AutomationTrigger) MarshalJSON() ([]byte, error) {
 		object["kind"] = json.RawMessage("\"schedule\"")
 	case *AutomationEventTrigger:
 		object["kind"] = json.RawMessage("\"event\"")
+	}
+	return json.Marshal(object)
+}
+
+// AutomationScheduledRunLimitPatch changes an automation's scheduled-run cap.
+type AutomationScheduledRunLimitPatch struct {
+	Value isAutomationScheduledRunLimitPatch
+}
+
+// isAutomationScheduledRunLimitPatch is the marker interface implemented by every
+// concrete variant of AutomationScheduledRunLimitPatch.
+type isAutomationScheduledRunLimitPatch interface{ isAutomationScheduledRunLimitPatch() }
+
+func (*AutomationScheduledRunLimitSetPatch) isAutomationScheduledRunLimitPatch()   {}
+func (*AutomationScheduledRunLimitClearPatch) isAutomationScheduledRunLimitPatch() {}
+
+// UnmarshalJSON decodes the variant indicated by the "kind" discriminator.
+func (u *AutomationScheduledRunLimitPatch) UnmarshalJSON(data []byte) error {
+	disc, ok, err := readDiscriminator(data, "kind")
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return missingDiscriminatorError("AutomationScheduledRunLimitPatch", "kind")
+	}
+	switch disc {
+	case "set":
+		var value AutomationScheduledRunLimitSetPatch
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		u.Value = &value
+	case "clear":
+		var value AutomationScheduledRunLimitClearPatch
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		u.Value = &value
+	default:
+		return unknownDiscriminatorError("AutomationScheduledRunLimitPatch", "kind", disc)
+	}
+	return nil
+}
+
+// MarshalJSON encodes the active variant back to JSON.
+func (u AutomationScheduledRunLimitPatch) MarshalJSON() ([]byte, error) {
+	if u.Value == nil {
+		return []byte("null"), nil
+	}
+	data, err := json.Marshal(u.Value)
+	if err != nil {
+		return nil, err
+	}
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(data, &object); err != nil {
+		return nil, err
+	}
+	switch u.Value.(type) {
+	case *AutomationScheduledRunLimitSetPatch:
+		object["kind"] = json.RawMessage("\"set\"")
+	case *AutomationScheduledRunLimitClearPatch:
+		object["kind"] = json.RawMessage("\"clear\"")
 	}
 	return json.Marshal(object)
 }

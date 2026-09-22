@@ -427,6 +427,13 @@ data class AutomationCapabilities(
      */
     val runCancellation: AutomationRunCancellationCapability? = null,
     /**
+     * Present when the host enforces {@link AutomationDefinition.scheduledRunLimit}
+     * and reports usage through {@link AutomationEntry.scheduledRunCount}. Absence
+     * means the host ignores any `scheduledRunLimit` value and never limits
+     * scheduled runs.
+     */
+    val scheduledRunLimits: AutomationScheduledRunLimitsCapability? = null,
+    /**
      * Maximum terminal entries retained in {@link AutomationEntry.runs}. Active
      * runs are not counted toward the limit. Absence means the retention limit is
      * implementation-defined.
@@ -449,6 +456,9 @@ data class AutomationScheduleCapabilities(
 
 @Serializable
 class AutomationRunCancellationCapability
+
+@Serializable
+class AutomationScheduledRunLimitsCapability
 
 @Serializable
 data class Implementation(

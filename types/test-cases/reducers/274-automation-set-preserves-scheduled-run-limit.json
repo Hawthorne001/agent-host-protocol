@@ -1,0 +1,44 @@
+{
+  "description": "automation set preserves the definition scheduled-run cap and host-owned scheduledRunCount on the upserted entry",
+  "reducer": "automation",
+  "initial": {
+    "entries": []
+  },
+  "actions": [{
+    "type": "automation/set",
+    "automation": {
+      "resource": "ahp-automation:/capped",
+      "definition": {
+        "title": "Capped",
+        "message": { "text": "go", "origin": { "kind": "automation" } },
+        "session": {},
+        "enabled": true,
+        "triggers": [],
+        "scheduledRunLimit": 3
+      },
+      "scheduledRunCount": 2,
+      "runs": [],
+      "operations": ["update", "remove", "run"],
+      "createdAt": "2025-01-01T00:00:00Z",
+      "modifiedAt": "2025-01-01T00:00:00Z"
+    }
+  }],
+  "expected": {
+    "entries": [{
+      "resource": "ahp-automation:/capped",
+      "definition": {
+        "title": "Capped",
+        "message": { "text": "go", "origin": { "kind": "automation" } },
+        "session": {},
+        "enabled": true,
+        "triggers": [],
+        "scheduledRunLimit": 3
+      },
+      "scheduledRunCount": 2,
+      "runs": [],
+      "operations": ["update", "remove", "run"],
+      "createdAt": "2025-01-01T00:00:00Z",
+      "modifiedAt": "2025-01-01T00:00:00Z"
+    }]
+  }
+}

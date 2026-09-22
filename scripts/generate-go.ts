@@ -727,6 +727,7 @@ const STATE_ENUMS = [
   'ChangesetStatus', 'ChangesetOperationStatus', 'ChangesetOperationScope', 'ResourceChangeType',
   'SessionOriginKind',
   'AutomationOperation', 'AutomationMisfirePolicy', 'AutomationTriggerKind',
+  'AutomationScheduledRunLimitPatchKind',
   'AutomationRunStatus', 'AutomationRunOriginKind',
 ];
 
@@ -873,6 +874,8 @@ const STATE_STRUCTS: { name: string; omitDiscriminants?: boolean; goName?: strin
   { name: 'AutomationSessionTemplate' },
   { name: 'AutomationDefinition' },
   { name: 'AutomationDefinitionPatch' },
+  { name: 'AutomationScheduledRunLimitSetPatch' },
+  { name: 'AutomationScheduledRunLimitClearPatch' },
   { name: 'AutomationEntry' },
   { name: 'AutomationState' },
   { name: 'AutomationManualRunOrigin' },
@@ -1137,6 +1140,17 @@ const AUTOMATION_TRIGGER_UNION: UnionConfig = {
   variants: [
     { variantName: 'Schedule', innerType: 'AutomationScheduleTrigger', wireValue: 'schedule' },
     { variantName: 'Event', innerType: 'AutomationEventTrigger', wireValue: 'event' },
+  ],
+  injectDiscriminantOnMarshal: true,
+};
+
+const AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION: UnionConfig = {
+  name: 'AutomationScheduledRunLimitPatch',
+  discriminantField: 'kind',
+  doc: 'AutomationScheduledRunLimitPatch changes an automation\'s scheduled-run cap.',
+  variants: [
+    { variantName: 'Set', innerType: 'AutomationScheduledRunLimitSetPatch', wireValue: 'set' },
+    { variantName: 'Clear', innerType: 'AutomationScheduledRunLimitClearPatch', wireValue: 'clear' },
   ],
   injectDiscriminantOnMarshal: true,
 };
@@ -1496,6 +1510,8 @@ function generateStateFile(project: Project): string {
   lines.push('');
   lines.push(generateDiscriminatedUnion(project, AUTOMATION_TRIGGER_UNION));
   lines.push('');
+  lines.push(generateDiscriminatedUnion(project, AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION));
+  lines.push('');
   lines.push(generateDiscriminatedUnion(project, AUTOMATION_RUN_ORIGIN_UNION));
   lines.push('');
   lines.push(generateDiscriminatedUnion(project, AUTOMATION_RUN_LIFECYCLE_UNION));
@@ -1722,6 +1738,7 @@ const COMMAND_STRUCTS: { name: string; omitDiscriminants?: boolean; goName?: str
   { name: 'AutomationCreateCapability' },
   { name: 'AutomationScheduleCapabilities' },
   { name: 'AutomationRunCancellationCapability' },
+  { name: 'AutomationScheduledRunLimitsCapability' },
   { name: 'Implementation' },
   { name: 'ReconnectParams' },
   { name: 'ReconnectReplayResult', omitDiscriminants: true },
@@ -2324,6 +2341,7 @@ function checkExhaustiveness(project: Project): void {
     'ReconnectResult',
     'SessionOrigin',
     'AutomationTrigger',
+    'AutomationScheduledRunLimitPatch',
     'AutomationRunOrigin',
     'AutomationRunLifecycle',
     'AuthRequiredErrorData',
