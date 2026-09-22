@@ -1894,6 +1894,16 @@ pub struct ChatState {
     /// update the subset on a running chat.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub working_directories: Option<Vec<Uri>>,
+    /// Catalogue of changesets the server can produce for this chat. Each entry
+    /// advertises a subscribable view of file changes scoped to the chat's
+    /// effective working directories and the URI template the client expands
+    /// before subscribing. See {@link Changeset} for the full shape and
+    /// {@link /guide/changesets | Changesets} for an overview of the model.
+    ///
+    /// This catalogue is intentionally absent from {@link ChatSummary}; clients
+    /// obtain it by subscribing to the chat channel.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub changesets: Option<Vec<Changeset>>,
     /// Completed turns
     pub turns: Vec<Turn>,
     /// Cursor for loading older completed turns into this chat state.
@@ -2381,6 +2391,37 @@ pub struct SessionSummary {
     /// and session notifications.
     #[serde(rename = "_meta", default, skip_serializing_if = "Option::is_none")]
     pub meta: Option<JsonObject>,
+    /// Lightweight ordered chat catalog for session-list presentation.
+    ///
+    /// This intentionally omits volatile chat state such as status and activity,
+    /// while retaining interactivity so generic clients can hide chats or present
+    /// them as read-only without subscribing to the session channel.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chats: Option<Vec<SessionChatSummary>>,
+    /// Chat that receives input when no specific chat is selected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_chat: Option<Uri>,
+}
+
+/// Lightweight chat information suitable for listing a session without
+/// subscribing to its session channel.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionChatSummary {
+    /// Canonical chat URI
+    pub resource: Uri,
+    /// Human-readable chat title
+    pub title: String,
+    /// How this chat was created, when known
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<ChatOrigin>,
+    /// How the user can interact with this chat.
+    ///
+    /// Generic clients use this to omit hidden chats and disable input for
+    /// read-only chats. Absence defaults to {@link ChatInteractivity.Full} for
+    /// backward compatibility.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interactivity: Option<ChatInteractivity>,
 }
 
 /// Aggregate counts describing the file changes associated with a session.
@@ -4882,7 +4923,7 @@ pub struct Snapshot {
 }
 
 /// Catalogue entry describing one changeset the server can produce for a
-/// session.
+/// session or chat.
 ///
 /// Catalogue entries are intentionally lightweight — just enough to render a
 /// chip or list row without subscribing. Full per-changeset detail
@@ -4903,8 +4944,8 @@ pub struct Changeset {
     ///
     /// | Variables in template                       | Meaning                                                                              |
     /// | ------------------------------------------- | ------------------------------------------------------------------------------------ |
-    /// | _(none)_                                    | A static, session-wide changeset. The template is itself a subscribable URI.         |
-    /// | `{turnId}`                                  | Per-turn slice. Expand with a `Turn.id` from the session.                            |
+    /// | _(none)_                                    | A static changeset scoped to the advertising session or chat. The template is itself a subscribable URI. |
+    /// | `{turnId}`                                  | Per-turn slice. Expand with a `Turn.id` from the advertising chat or session.        |
     /// | `{originalTurnId}` and `{modifiedTurnId}`   | Diff between two turns. Both variables MUST be present.                              |
     ///
     /// Future protocol versions MAY add new well-known variables.
@@ -4933,11 +4974,11 @@ pub struct Changeset {
     /// Optional capability declarations for this changeset. Absent (or an empty
     /// object) means the changeset advertises no optional capabilities.
     ///
-    /// Because the catalogue entry is delivered up-front on
-    /// {@link ChangesetState | the session's changeset list}, clients can decide
-    /// whether to surface capability-gated UI (such as review checkboxes) without
-    /// first subscribing to the changeset URI. Mirrors the presence-flag
-    /// convention of `ClientCapabilities`.
+    /// Because the catalogue entry is delivered up-front on the advertising
+    /// session or chat's changeset list, clients can decide whether to surface
+    /// capability-gated UI (such as review checkboxes) without first subscribing
+    /// to the changeset URI. Mirrors the presence-flag convention of
+    /// `ClientCapabilities`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub capabilities: Option<ChangesetCapabilities>,
 }

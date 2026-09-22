@@ -1639,6 +1639,15 @@ public struct ChatState: Codable, Sendable {
     /// Dispatch `chat/workingDirectorySet` / `chat/workingDirectoryRemoved` to
     /// update the subset on a running chat.
     public var workingDirectories: [String]?
+    /// Catalogue of changesets the server can produce for this chat. Each entry
+    /// advertises a subscribable view of file changes scoped to the chat's
+    /// effective working directories and the URI template the client expands
+    /// before subscribing. See {@link Changeset} for the full shape and
+    /// {@link /guide/changesets | Changesets} for an overview of the model.
+    ///
+    /// This catalogue is intentionally absent from {@link ChatSummary}; clients
+    /// obtain it by subscribing to the chat channel.
+    public var changesets: [Changeset]?
     /// Completed turns
     public var turns: [Turn]
     /// Cursor for loading older completed turns into this chat state.
@@ -1678,6 +1687,7 @@ public struct ChatState: Codable, Sendable {
         case origin
         case interactivity
         case workingDirectories
+        case changesets
         case turns
         case turnsNextCursor
         case activeTurn
@@ -1696,6 +1706,7 @@ public struct ChatState: Codable, Sendable {
         origin: ChatOrigin? = nil,
         interactivity: ChatInteractivity? = nil,
         workingDirectories: [String]? = nil,
+        changesets: [Changeset]? = nil,
         turns: [Turn],
         turnsNextCursor: String? = nil,
         activeTurn: ActiveTurn? = nil,
@@ -1712,6 +1723,7 @@ public struct ChatState: Codable, Sendable {
         self.origin = origin
         self.interactivity = interactivity
         self.workingDirectories = workingDirectories
+        self.changesets = changesets
         self.turns = turns
         self.turnsNextCursor = turnsNextCursor
         self.activeTurn = activeTurn
@@ -2160,6 +2172,14 @@ public struct SessionSummary: Codable, Sendable {
     /// SHOULD keep the payload small because summaries appear in session lists
     /// and session notifications.
     public var meta: [String: AnyCodable]?
+    /// Lightweight ordered chat catalog for session-list presentation.
+    ///
+    /// This intentionally omits volatile chat state such as status and activity,
+    /// while retaining interactivity so generic clients can hide chats or present
+    /// them as read-only without subscribing to the session channel.
+    public var chats: [SessionChatSummary]?
+    /// Chat that receives input when no specific chat is selected.
+    public var defaultChat: String?
 
     enum CodingKeys: String, CodingKey {
         case provider
@@ -2175,6 +2195,8 @@ public struct SessionSummary: Codable, Sendable {
         case modifiedAt
         case changes
         case meta = "_meta"
+        case chats
+        case defaultChat
     }
 
     public init(
@@ -2190,7 +2212,9 @@ public struct SessionSummary: Codable, Sendable {
         createdAt: String,
         modifiedAt: String,
         changes: ChangesSummary? = nil,
-        meta: [String: AnyCodable]? = nil
+        meta: [String: AnyCodable]? = nil,
+        chats: [SessionChatSummary]? = nil,
+        defaultChat: String? = nil
     ) {
         self.provider = provider
         self.title = title
@@ -2205,6 +2229,35 @@ public struct SessionSummary: Codable, Sendable {
         self.modifiedAt = modifiedAt
         self.changes = changes
         self.meta = meta
+        self.chats = chats
+        self.defaultChat = defaultChat
+    }
+}
+
+public struct SessionChatSummary: Codable, Sendable {
+    /// Canonical chat URI
+    public var resource: String
+    /// Human-readable chat title
+    public var title: String
+    /// How this chat was created, when known
+    public var origin: ChatOrigin?
+    /// How the user can interact with this chat.
+    ///
+    /// Generic clients use this to omit hidden chats and disable input for
+    /// read-only chats. Absence defaults to {@link ChatInteractivity.Full} for
+    /// backward compatibility.
+    public var interactivity: ChatInteractivity?
+
+    public init(
+        resource: String,
+        title: String,
+        origin: ChatOrigin? = nil,
+        interactivity: ChatInteractivity? = nil
+    ) {
+        self.resource = resource
+        self.title = title
+        self.origin = origin
+        self.interactivity = interactivity
     }
 }
 
@@ -5675,8 +5728,8 @@ public struct Changeset: Codable, Sendable {
     ///
     /// | Variables in template                       | Meaning                                                                              |
     /// | ------------------------------------------- | ------------------------------------------------------------------------------------ |
-    /// | _(none)_                                    | A static, session-wide changeset. The template is itself a subscribable URI.         |
-    /// | `{turnId}`                                  | Per-turn slice. Expand with a `Turn.id` from the session.                            |
+    /// | _(none)_                                    | A static changeset scoped to the advertising session or chat. The template is itself a subscribable URI. |
+    /// | `{turnId}`                                  | Per-turn slice. Expand with a `Turn.id` from the advertising chat or session.        |
     /// | `{originalTurnId}` and `{modifiedTurnId}`   | Diff between two turns. Both variables MUST be present.                              |
     ///
     /// Future protocol versions MAY add new well-known variables.
@@ -5704,11 +5757,11 @@ public struct Changeset: Codable, Sendable {
     /// Optional capability declarations for this changeset. Absent (or an empty
     /// object) means the changeset advertises no optional capabilities.
     ///
-    /// Because the catalogue entry is delivered up-front on
-    /// {@link ChangesetState | the session's changeset list}, clients can decide
-    /// whether to surface capability-gated UI (such as review checkboxes) without
-    /// first subscribing to the changeset URI. Mirrors the presence-flag
-    /// convention of `ClientCapabilities`.
+    /// Because the catalogue entry is delivered up-front on the advertising
+    /// session or chat's changeset list, clients can decide whether to surface
+    /// capability-gated UI (such as review checkboxes) without first subscribing
+    /// to the changeset URI. Mirrors the presence-flag convention of
+    /// `ClientCapabilities`.
     public var capabilities: ChangesetCapabilities?
 
     public init(
