@@ -1207,7 +1207,7 @@ type SessionMetaChangedAction struct {
 }
 
 // The {@link ChangesetState.status} for this changeset transitioned (e.g.
-// `computing → ready` or `ready → recomputing`). The error payload is set
+// `computing → ready` or `recomputing → ready`). The error payload is set
 // together with `status` whenever it transitions to
 // {@link ChangesetStatus.Error | Error}.
 type ChangesetStatusChangedAction struct {
