@@ -10,7 +10,7 @@
         "session": {},
         "enabled": true,
         "triggers": [],
-        "disableConditions": [{ "kind": "finiteRuns", "maxRuns": 3 }]
+        "disableConditions": [{ "kind": "maxRuns", "maxRuns": 3 }]
       },
       "scheduledRunCount": 2,
       "runs": [],
@@ -44,7 +44,7 @@
       "resource": "ahp-automation:/a1",
       "changes": {
         "disableConditions": [
-          { "kind": "finiteRuns", "maxRuns": 5 },
+          { "kind": "maxRuns", "maxRuns": 5 },
           { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
         ]
       }
@@ -64,7 +64,7 @@
         "session": {},
         "enabled": true,
         "triggers": [],
-        "disableConditions": [{ "kind": "finiteRuns", "maxRuns": 3 }]
+        "disableConditions": [{ "kind": "maxRuns", "maxRuns": 3 }]
       },
       "scheduledRunCount": 2,
       "runs": [],

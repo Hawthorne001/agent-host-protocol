@@ -311,13 +311,13 @@ A definition may stop itself automatically through the optional
 `disableConditions` array. Each element is an `AutomationDisableCondition`
 discriminated union:
 
-- `{ kind: "finiteRuns", maxRuns }` — stop after a fixed number of **scheduled**
+- `{ kind: "maxRuns", maxRuns }` — stop after a fixed number of **scheduled**
   runs (`maxRuns` is a positive integer).
 - `{ kind: "finalDate", finalDate }` — stop once the ISO 8601 `finalDate`
   passes.
 
 Conditions combine with **logical OR**: meeting any condition disables automatic
-scheduling. For example, `[ { kind: "finiteRuns", maxRuns: 3 },
+scheduling. For example, `[ { kind: "maxRuns", maxRuns: 3 },
 { kind: "finalDate", finalDate: "2026-10-01T00:00:00Z" } ]` stops after three
 scheduled runs or when the date passes, whichever happens first. Order does not
 matter. Each kind may appear **at most once**; hosts MUST reject create and
@@ -326,12 +326,12 @@ An absent field or an empty array means there are no automatic disable
 conditions; neither overrides `enabled` or the configured triggers.
 
 Conditions govern only runs created by automatic triggers. Manual runs via
-`runAutomation` never consume a `finiteRuns` allowance and are never blocked by
+`runAutomation` never consume a `maxRuns` allowance and are never blocked by
 either condition — a host continues to advertise the `run` operation even after
 the automation has stopped scheduling, exactly as it does for a disabled
 automation.
 
-For a `finiteRuns` condition the host owns usage through the authoritative
+For a `maxRuns` condition the host owns usage through the authoritative
 `AutomationEntry.scheduledRunCount`. It is the count for the **current
 allowance**, not a lifetime total, and it is not reconstructed from the bounded
 `runs` window. The host increments it atomically when it admits a scheduled run,
@@ -343,17 +343,17 @@ keep their own count.
 Meeting any condition sets `enabled` to `false`,
 while the definition retains its `disableConditions`. A `finalDate` stays in the
 definition after it passes, and clients should warn before re-enabling. For a
-`finiteRuns` condition, the allowance resets — the host sets `scheduledRunCount`
+`maxRuns` condition, the allowance resets — the host sets `scheduledRunCount`
 back to `0` — in exactly two cases:
 
 - a disabled→enabled transition (`enabled` changes from `false` to `true`), and
-- adding a `finiteRuns` condition when none was present, including alongside an
+- adding a `maxRuns` condition when none was present, including alongside an
   existing `finalDate` condition.
 
-Editing a `finiteRuns` condition while enabled preserves usage: with two of
+Editing a `maxRuns` condition while enabled preserves usage: with two of
 three runs spent, raising `maxRuns` to five leaves three remaining. Changing,
 adding, or removing only the `finalDate` condition preserves that count, as
-does reordering the conditions. Removing `finiteRuns` makes
+does reordering the conditions. Removing `maxRuns` makes
 `scheduledRunCount` absent. Other edits that do not change `enabled` never reset
 the count.
 

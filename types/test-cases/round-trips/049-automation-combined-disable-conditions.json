@@ -9,7 +9,7 @@
     "changes": {
       "disableConditions": [
         { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" },
-        { "kind": "finiteRuns", "maxRuns": 3 }
+        { "kind": "maxRuns", "maxRuns": 3 }
       ]
     }
   },
@@ -19,7 +19,7 @@
     "changes": {
       "disableConditions": [
         { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" },
-        { "kind": "finiteRuns", "maxRuns": 3 }
+        { "kind": "maxRuns", "maxRuns": 3 }
       ]
     }
   }]

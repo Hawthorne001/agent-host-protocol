@@ -633,8 +633,8 @@ public enum AutomationTriggerKind
 public enum AutomationDisableConditionKind
 {
     /// <summary>Stop scheduling after a fixed number of scheduled runs.</summary>
-    [WireValue("finiteRuns")]
-    FiniteRuns,
+    [WireValue("maxRuns")]
+    MaxRuns,
     /// <summary>Stop scheduling once a wall-clock date passes.</summary>
     [WireValue("finalDate")]
     FinalDate,
@@ -5241,7 +5241,7 @@ public sealed record AutomationDefinition
     ///
     /// Only automatic (scheduled) runs are governed; manual runs via
     /// {@link RunAutomationParams | runAutomation} are never blocked. For a
-    /// {@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned
+    /// {@link AutomationMaxRunsCondition}, usage is tracked by the host-owned
     /// {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
     /// a disabled→enabled transition starts a fresh allowance. Clearing the
     /// conditions does not re-enable a disabled automation. See the
@@ -5298,7 +5298,7 @@ public sealed record AutomationDefinitionPatch
 }
 
 /// <summary>Stops scheduling after a fixed number of scheduled runs.</summary>
-public sealed record AutomationFiniteRunsCondition
+public sealed record AutomationMaxRunsCondition
 {
     public AutomationDisableConditionKind Kind { get; init; }
 
@@ -5333,16 +5333,16 @@ public sealed class AutomationEntry
     public string? NextRunAt { get; set; }
 
     /// <summary>Host-owned count of scheduled runs consumed against the current
-    /// {@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the
+    /// {@link AutomationMaxRunsCondition} allowance. Authoritative usage for the
     /// **current** allowance, not a lifetime total: the host resets it to `0` when
     /// a disabled→enabled transition starts a fresh allowance or a
-    /// {@link AutomationFiniteRunsCondition} is added when none was present. It is NOT
+    /// {@link AutomationMaxRunsCondition} is added when none was present. It is NOT
     /// reconstructed from {@link runs} (a bounded, prunable window). The host
     /// increments it atomically when it admits a scheduled run, including runs
     /// later cancelled or failed.
     ///
     /// Absent when {@link AutomationDefinition.disableConditions} contains no
-    /// {@link AutomationFiniteRunsCondition}.
+    /// {@link AutomationMaxRunsCondition}.
     /// Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
     /// never maintain their own count.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -6212,7 +6212,7 @@ internal sealed class AutomationDisableConditionConverter : UnionConverter<Autom
             discriminator: "kind",
             variants: new Dictionary<string, Type>
             {
-        ["finiteRuns"] = typeof(AutomationFiniteRunsCondition),
+        ["maxRuns"] = typeof(AutomationMaxRunsCondition),
         ["finalDate"] = typeof(AutomationFinalDateCondition),
             },
             allowUnknown: false)

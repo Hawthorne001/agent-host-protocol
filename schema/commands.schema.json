@@ -6811,12 +6811,12 @@
         "events"
       ]
     },
-    "AutomationFiniteRunsCondition": {
+    "AutomationMaxRunsCondition": {
       "type": "object",
       "description": "Stops scheduling after a fixed number of scheduled runs.",
       "properties": {
         "kind": {
-          "const": "finiteRuns"
+          "const": "maxRuns"
         },
         "maxRuns": {
           "type": "integer",
@@ -6964,14 +6964,14 @@
           "items": {
             "$ref": "#/$defs/AutomationDisableCondition"
           },
-          "description": "Self-disable rules combined with logical OR: the host sets\n{@link AutomationDefinition.enabled} to `false` when any condition is met.\nAbsent or empty means no automatic disable conditions. Each\n{@link AutomationDisableConditionKind} may appear at most once; hosts MUST\nreject create or update requests containing duplicate kinds.\n\nOnly automatic (scheduled) runs are governed; manual runs via\n{@link RunAutomationParams | runAutomation} are never blocked. For a\n{@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned\n{@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or\na disabled→enabled transition starts a fresh allowance. Clearing the\nconditions does not re-enable a disabled automation. See the\n{@link /guide/automations | Automations Guide}.",
+          "description": "Self-disable rules combined with logical OR: the host sets\n{@link AutomationDefinition.enabled} to `false` when any condition is met.\nAbsent or empty means no automatic disable conditions. Each\n{@link AutomationDisableConditionKind} may appear at most once; hosts MUST\nreject create or update requests containing duplicate kinds.\n\nOnly automatic (scheduled) runs are governed; manual runs via\n{@link RunAutomationParams | runAutomation} are never blocked. For a\n{@link AutomationMaxRunsCondition}, usage is tracked by the host-owned\n{@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or\na disabled→enabled transition starts a fresh allowance. Clearing the\nconditions does not re-enable a disabled automation. See the\n{@link /guide/automations | Automations Guide}.",
           "allOf": [
             {
               "contains": {
                 "type": "object",
                 "properties": {
                   "kind": {
-                    "const": "finiteRuns"
+                    "const": "maxRuns"
                   }
                 },
                 "required": [
@@ -7030,7 +7030,7 @@
         },
         "scheduledRunCount": {
           "type": "number",
-          "description": "Host-owned count of scheduled runs consumed against the current\n{@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the\n**current** allowance, not a lifetime total: the host resets it to `0` when\na disabled→enabled transition starts a fresh allowance or a\n{@link AutomationFiniteRunsCondition} is added when none was present. It is NOT\nreconstructed from {@link runs} (a bounded, prunable window). The host\nincrements it atomically when it admits a scheduled run, including runs\nlater cancelled or failed.\n\nAbsent when {@link AutomationDefinition.disableConditions} contains no\n{@link AutomationFiniteRunsCondition}.\nClients render remaining allowance as `maxRuns - scheduledRunCount`; they\nnever maintain their own count."
+          "description": "Host-owned count of scheduled runs consumed against the current\n{@link AutomationMaxRunsCondition} allowance. Authoritative usage for the\n**current** allowance, not a lifetime total: the host resets it to `0` when\na disabled→enabled transition starts a fresh allowance or a\n{@link AutomationMaxRunsCondition} is added when none was present. It is NOT\nreconstructed from {@link runs} (a bounded, prunable window). The host\nincrements it atomically when it admits a scheduled run, including runs\nlater cancelled or failed.\n\nAbsent when {@link AutomationDefinition.disableConditions} contains no\n{@link AutomationMaxRunsCondition}.\nClients render remaining allowance as `maxRuns - scheduledRunCount`; they\nnever maintain their own count."
         },
         "runs": {
           "type": "array",
@@ -9545,7 +9545,7 @@
                 "type": "object",
                 "properties": {
                   "kind": {
-                    "const": "finiteRuns"
+                    "const": "maxRuns"
                   }
                 },
                 "required": [
@@ -10808,7 +10808,7 @@
     "AutomationDisableCondition": {
       "oneOf": [
         {
-          "$ref": "#/$defs/AutomationFiniteRunsCondition"
+          "$ref": "#/$defs/AutomationMaxRunsCondition"
         },
         {
           "$ref": "#/$defs/AutomationFinalDateCondition"

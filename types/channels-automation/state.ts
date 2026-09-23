@@ -198,7 +198,7 @@ export type AutomationTrigger =
  */
 export const enum AutomationDisableConditionKind {
   /** Stop scheduling after a fixed number of scheduled runs. */
-  FiniteRuns = 'finiteRuns',
+  MaxRuns = 'maxRuns',
   /** Stop scheduling once a wall-clock date passes. */
   FinalDate = 'finalDate',
 }
@@ -208,8 +208,8 @@ export const enum AutomationDisableConditionKind {
  *
  * @category Automation State
  */
-export interface AutomationFiniteRunsCondition {
-  kind: AutomationDisableConditionKind.FiniteRuns;
+export interface AutomationMaxRunsCondition {
+  kind: AutomationDisableConditionKind.MaxRuns;
   /**
    * Positive-integer cap on scheduled runs.
    * @integer
@@ -236,7 +236,7 @@ export interface AutomationFinalDateCondition {
  * @category Automation State
  */
 export type AutomationDisableCondition =
-  | AutomationFiniteRunsCondition
+  | AutomationMaxRunsCondition
   | AutomationFinalDateCondition;
 
 /**
@@ -345,7 +345,7 @@ export interface AutomationDefinition {
    *
    * Only automatic (scheduled) runs are governed; manual runs via
    * {@link RunAutomationParams | runAutomation} are never blocked. For a
-   * {@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned
+   * {@link AutomationMaxRunsCondition}, usage is tracked by the host-owned
    * {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
    * a disabled→enabled transition starts a fresh allowance. Clearing the
    * conditions does not re-enable a disabled automation. See the
@@ -379,16 +379,16 @@ export interface AutomationEntry {
   nextRunAt?: string;
   /**
    * Host-owned count of scheduled runs consumed against the current
-   * {@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the
+   * {@link AutomationMaxRunsCondition} allowance. Authoritative usage for the
    * **current** allowance, not a lifetime total: the host resets it to `0` when
    * a disabled→enabled transition starts a fresh allowance or a
-   * {@link AutomationFiniteRunsCondition} is added when none was present. It is NOT
+   * {@link AutomationMaxRunsCondition} is added when none was present. It is NOT
    * reconstructed from {@link runs} (a bounded, prunable window). The host
    * increments it atomically when it admits a scheduled run, including runs
    * later cancelled or failed.
    *
    * Absent when {@link AutomationDefinition.disableConditions} contains no
-   * {@link AutomationFiniteRunsCondition}.
+   * {@link AutomationMaxRunsCondition}.
    * Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
    * never maintain their own count.
    */

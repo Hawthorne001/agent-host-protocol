@@ -1043,7 +1043,7 @@ const STATE_STRUCTS = [
   'AutomationTriggerEventDefinition', 'AutomationTriggerDefinition',
   'AutomationSessionTemplate', 'AutomationDefinition',
   'AutomationDefinitionPatch',
-  'AutomationFiniteRunsCondition', 'AutomationFinalDateCondition',
+  'AutomationMaxRunsCondition', 'AutomationFinalDateCondition',
   'AutomationEntry', 'AutomationState',
   'AutomationManualRunOrigin', 'AutomationTriggeredRunOrigin',
   'AutomationPendingRunLifecycle', 'AutomationRunningRunLifecycle',
@@ -1346,7 +1346,7 @@ const AUTOMATION_DISABLE_CONDITION_UNION: UnionConfig = {
   name: 'AutomationDisableCondition',
   discriminantField: 'kind',
   variants: [
-    { caseName: 'FiniteRuns', structName: 'AutomationFiniteRunsCondition', discriminantValue: 'finiteRuns' },
+    { caseName: 'MaxRuns', structName: 'AutomationMaxRunsCondition', discriminantValue: 'maxRuns' },
     { caseName: 'FinalDate', structName: 'AutomationFinalDateCondition', discriminantValue: 'finalDate' },
   ],
   injectDiscriminantOnSerialize: true,

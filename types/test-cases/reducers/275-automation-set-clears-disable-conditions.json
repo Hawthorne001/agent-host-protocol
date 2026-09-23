@@ -10,7 +10,7 @@
         "session": {},
         "enabled": false,
         "triggers": [],
-        "disableConditions": [{ "kind": "finiteRuns", "maxRuns": 3 }]
+        "disableConditions": [{ "kind": "maxRuns", "maxRuns": 3 }]
       },
       "scheduledRunCount": 3,
       "runs": [],

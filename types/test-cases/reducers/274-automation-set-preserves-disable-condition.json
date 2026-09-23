@@ -15,7 +15,7 @@
         "enabled": false,
         "triggers": [],
         "disableConditions": [
-          { "kind": "finiteRuns", "maxRuns": 3 },
+          { "kind": "maxRuns", "maxRuns": 3 },
           { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
         ]
       },
@@ -36,7 +36,7 @@
         "enabled": false,
         "triggers": [],
         "disableConditions": [
-          { "kind": "finiteRuns", "maxRuns": 3 },
+          { "kind": "maxRuns", "maxRuns": 3 },
           { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
         ]
       },

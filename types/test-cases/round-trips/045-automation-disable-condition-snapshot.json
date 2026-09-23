@@ -20,7 +20,7 @@
             "misfirePolicy": "runOnce"
           }],
           "disableConditions": [
-            { "kind": "finiteRuns", "maxRuns": 3 },
+            { "kind": "maxRuns", "maxRuns": 3 },
             { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
           ]
         },
@@ -50,7 +50,7 @@
             "misfirePolicy": "runOnce"
           }],
           "disableConditions": [
-            { "kind": "finiteRuns", "maxRuns": 3 },
+            { "kind": "maxRuns", "maxRuns": 3 },
             { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
           ]
         },

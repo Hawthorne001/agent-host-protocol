@@ -1096,8 +1096,8 @@ enum class AutomationDisableConditionKind {
     /**
      * Stop scheduling after a fixed number of scheduled runs.
      */
-    @SerialName("finiteRuns")
-    FINITE_RUNS,
+    @SerialName("maxRuns")
+    MAX_RUNS,
     /**
      * Stop scheduling once a wall-clock date passes.
      */
@@ -5403,7 +5403,7 @@ data class AutomationDefinition(
      *
      * Only automatic (scheduled) runs are governed; manual runs via
      * {@link RunAutomationParams | runAutomation} are never blocked. For a
-     * {@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned
+     * {@link AutomationMaxRunsCondition}, usage is tracked by the host-owned
      * {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
      * a disabled→enabled transition starts a fresh allowance. Clearing the
      * conditions does not re-enable a disabled automation. See the
@@ -5457,7 +5457,7 @@ data class AutomationDefinitionPatch(
 )
 
 @Serializable
-data class AutomationFiniteRunsCondition(
+data class AutomationMaxRunsCondition(
     val kind: AutomationDisableConditionKind,
     /**
      * Positive-integer cap on scheduled runs.
@@ -5490,16 +5490,16 @@ data class AutomationEntry(
     val nextRunAt: String? = null,
     /**
      * Host-owned count of scheduled runs consumed against the current
-     * {@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the
+     * {@link AutomationMaxRunsCondition} allowance. Authoritative usage for the
      * **current** allowance, not a lifetime total: the host resets it to `0` when
      * a disabled→enabled transition starts a fresh allowance or a
-     * {@link AutomationFiniteRunsCondition} is added when none was present. It is NOT
+     * {@link AutomationMaxRunsCondition} is added when none was present. It is NOT
      * reconstructed from {@link runs} (a bounded, prunable window). The host
      * increments it atomically when it admits a scheduled run, including runs
      * later cancelled or failed.
      *
      * Absent when {@link AutomationDefinition.disableConditions} contains no
-     * {@link AutomationFiniteRunsCondition}.
+     * {@link AutomationMaxRunsCondition}.
      * Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
      * never maintain their own count.
      */
@@ -6917,7 +6917,7 @@ internal object AutomationTriggerSerializer : KSerializer<AutomationTrigger> {
 sealed interface AutomationDisableCondition
 
 @JvmInline
-value class AutomationDisableConditionFiniteRuns(val value: AutomationFiniteRunsCondition) : AutomationDisableCondition
+value class AutomationDisableConditionMaxRuns(val value: AutomationMaxRunsCondition) : AutomationDisableCondition
 @JvmInline
 value class AutomationDisableConditionFinalDate(val value: AutomationFinalDateCondition) : AutomationDisableCondition
 
@@ -6934,7 +6934,7 @@ internal object AutomationDisableConditionSerializer : KSerializer<AutomationDis
         val discriminant = (obj["kind"] as? JsonPrimitive)?.content
             ?: error("Missing kind discriminator on AutomationDisableCondition")
         return when (discriminant) {
-            "finiteRuns" -> AutomationDisableConditionFiniteRuns(input.json.decodeFromJsonElement(AutomationFiniteRunsCondition.serializer(), element))
+            "maxRuns" -> AutomationDisableConditionMaxRuns(input.json.decodeFromJsonElement(AutomationMaxRunsCondition.serializer(), element))
             "finalDate" -> AutomationDisableConditionFinalDate(input.json.decodeFromJsonElement(AutomationFinalDateCondition.serializer(), element))
             else -> error("Unknown AutomationDisableCondition discriminator: $discriminant")
         }
@@ -6944,12 +6944,12 @@ internal object AutomationDisableConditionSerializer : KSerializer<AutomationDis
         val output = encoder as? JsonEncoder
             ?: error("AutomationDisableCondition can only be serialized to JSON")
         val element: JsonElement = when (value) {
-            is AutomationDisableConditionFiniteRuns -> output.json.encodeToJsonElement(AutomationFiniteRunsCondition.serializer(), value.value)
+            is AutomationDisableConditionMaxRuns -> output.json.encodeToJsonElement(AutomationMaxRunsCondition.serializer(), value.value)
             is AutomationDisableConditionFinalDate -> output.json.encodeToJsonElement(AutomationFinalDateCondition.serializer(), value.value)
         }
         val encodedObject = element.jsonObject.toMutableMap()
         val discriminant = when (value) {
-            is AutomationDisableConditionFiniteRuns -> "finiteRuns"
+            is AutomationDisableConditionMaxRuns -> "maxRuns"
             is AutomationDisableConditionFinalDate -> "finalDate"
         }
         if (discriminant != null) encodedObject["kind"] = JsonPrimitive(discriminant)

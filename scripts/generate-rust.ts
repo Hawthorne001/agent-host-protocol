@@ -935,7 +935,7 @@ const STATE_STRUCTS: { name: string; omitDiscriminants?: boolean; rustName?: str
   { name: 'AutomationSessionTemplate' },
   { name: 'AutomationDefinition' },
   { name: 'AutomationDefinitionPatch' },
-  { name: 'AutomationFiniteRunsCondition', omitDiscriminants: true },
+  { name: 'AutomationMaxRunsCondition', omitDiscriminants: true },
   { name: 'AutomationFinalDateCondition', omitDiscriminants: true },
   { name: 'AutomationEntry' },
   { name: 'AutomationState' },
@@ -1213,7 +1213,7 @@ const AUTOMATION_DISABLE_CONDITION_UNION: UnionConfig = {
   discriminantField: 'kind',
   doc: 'Self-disable rule for an automation.',
   variants: [
-    { variantName: 'FiniteRuns', innerType: 'AutomationFiniteRunsCondition', wireValue: 'finiteRuns' },
+    { variantName: 'MaxRuns', innerType: 'AutomationMaxRunsCondition', wireValue: 'maxRuns' },
     { variantName: 'FinalDate', innerType: 'AutomationFinalDateCondition', wireValue: 'finalDate' },
   ],
 };

@@ -1078,7 +1078,7 @@ public enum AutomationTriggerKind: String, Codable, Sendable {
 /// Discriminant for an {@link AutomationDisableCondition}.
 public enum AutomationDisableConditionKind: String, Codable, Sendable {
     /// Stop scheduling after a fixed number of scheduled runs.
-    case finiteRuns = "finiteRuns"
+    case maxRuns = "maxRuns"
     /// Stop scheduling once a wall-clock date passes.
     case finalDate = "finalDate"
 }
@@ -6309,7 +6309,7 @@ public struct AutomationDefinition: Codable, Sendable {
     ///
     /// Only automatic (scheduled) runs are governed; manual runs via
     /// {@link RunAutomationParams | runAutomation} are never blocked. For a
-    /// {@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned
+    /// {@link AutomationMaxRunsCondition}, usage is tracked by the host-owned
     /// {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
     /// a disabled→enabled transition starts a fresh allowance. Clearing the
     /// conditions does not re-enable a disabled automation. See the
@@ -6398,7 +6398,7 @@ public struct AutomationDefinitionPatch: Codable, Sendable {
     }
 }
 
-public struct AutomationFiniteRunsCondition: Codable, Sendable {
+public struct AutomationMaxRunsCondition: Codable, Sendable {
     public var kind: AutomationDisableConditionKind
     /// Positive-integer cap on scheduled runs.
     public var maxRuns: Int
@@ -6434,16 +6434,16 @@ public struct AutomationEntry: Codable, Sendable {
     /// Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending.
     public var nextRunAt: String?
     /// Host-owned count of scheduled runs consumed against the current
-    /// {@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the
+    /// {@link AutomationMaxRunsCondition} allowance. Authoritative usage for the
     /// **current** allowance, not a lifetime total: the host resets it to `0` when
     /// a disabled→enabled transition starts a fresh allowance or a
-    /// {@link AutomationFiniteRunsCondition} is added when none was present. It is NOT
+    /// {@link AutomationMaxRunsCondition} is added when none was present. It is NOT
     /// reconstructed from {@link runs} (a bounded, prunable window). The host
     /// increments it atomically when it admits a scheduled run, including runs
     /// later cancelled or failed.
     ///
     /// Absent when {@link AutomationDefinition.disableConditions} contains no
-    /// {@link AutomationFiniteRunsCondition}.
+    /// {@link AutomationMaxRunsCondition}.
     /// Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
     /// never maintain their own count.
     public var scheduledRunCount: Int?
@@ -7710,7 +7710,7 @@ public enum AutomationTrigger: Codable, Sendable {
 }
 
 public enum AutomationDisableCondition: Codable, Sendable {
-    case finiteRuns(AutomationFiniteRunsCondition)
+    case maxRuns(AutomationMaxRunsCondition)
     case finalDate(AutomationFinalDateCondition)
 
     private enum DiscriminantKey: String, CodingKey {
@@ -7721,8 +7721,8 @@ public enum AutomationDisableCondition: Codable, Sendable {
         let container = try decoder.container(keyedBy: DiscriminantKey.self)
         let discriminant = try container.decode(String.self, forKey: .discriminant)
         switch discriminant {
-        case "finiteRuns":
-            self = .finiteRuns(try AutomationFiniteRunsCondition(from: decoder))
+        case "maxRuns":
+            self = .maxRuns(try AutomationMaxRunsCondition(from: decoder))
         case "finalDate":
             self = .finalDate(try AutomationFinalDateCondition(from: decoder))
         default:
@@ -7732,8 +7732,8 @@ public enum AutomationDisableCondition: Codable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         switch self {
-        case .finiteRuns(var value):
-            value.kind = .finiteRuns
+        case .maxRuns(var value):
+            value.kind = .maxRuns
             try value.encode(to: encoder)
         case .finalDate(var value):
             value.kind = .finalDate
