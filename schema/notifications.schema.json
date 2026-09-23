@@ -4666,14 +4666,14 @@
     },
     "ToolResultTerminalContent": {
       "type": "object",
-      "description": "A reference to a terminal whose output is relevant to this tool result.\n\nClients can subscribe to the terminal's URI to stream its output in real\ntime, providing live feedback while a tool is executing.\n\nWhen the command exits, {@link result} is filled in on the completed\nresult, retaining the outcome for clients that did not subscribe. This\nrecords the command's exit, not the terminal's — the terminal may keep\nrunning afterwards.",
+      "description": "A reference to a terminal whose output is relevant to this tool result.\n\nClients can subscribe to the terminal's URI to stream its output in real\ntime, providing live feedback while a tool is executing. The same URI\nremains subscribable for historical results: when the referenced resource's\nlifecycle is `exited`, subscribing returns an exited {@link TerminalState}\ncontaining the retained terminal content. Servers may reconstruct that state\nlazily and do not need to retain a live terminal process.\n\nWhen the command exits, {@link result} is filled in on the completed\nresult, retaining the outcome for clients that did not subscribe. This\nrecords the command's exit, not the terminal's — the terminal may keep\nrunning afterwards.",
       "properties": {
         "type": {
           "const": "terminal"
         },
         "resource": {
           "$ref": "#/$defs/URI",
-          "description": "Terminal URI (subscribable for full terminal state)"
+          "description": "Terminal URI (subscribable for live or retained terminal state)"
         },
         "title": {
           "type": "string",

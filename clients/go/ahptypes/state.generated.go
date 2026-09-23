@@ -2480,7 +2480,11 @@ type ToolResultFileEditContent struct {
 // A reference to a terminal whose output is relevant to this tool result.
 //
 // Clients can subscribe to the terminal's URI to stream its output in real
-// time, providing live feedback while a tool is executing.
+// time, providing live feedback while a tool is executing. The same URI
+// remains subscribable for historical results: when the referenced resource's
+// lifecycle is `exited`, subscribing returns an exited {@link TerminalState}
+// containing the retained terminal content. Servers may reconstruct that state
+// lazily and do not need to retain a live terminal process.
 //
 // When the command exits, {@link result} is filled in on the completed
 // result, retaining the outcome for clients that did not subscribe. This
@@ -2488,7 +2492,7 @@ type ToolResultFileEditContent struct {
 // running afterwards.
 type ToolResultTerminalContent struct {
 	Type ToolResultContentType `json:"type"`
-	// Terminal URI (subscribable for full terminal state)
+	// Terminal URI (subscribable for live or retained terminal state)
 	Resource URI `json:"resource"`
 	// Display title for the terminal content
 	Title string `json:"title"`

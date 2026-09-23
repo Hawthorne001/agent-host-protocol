@@ -4186,7 +4186,7 @@ public struct ToolResultFileEditContent: Codable, Sendable {
 
 public struct ToolResultTerminalContent: Codable, Sendable {
     public var type: ToolResultContentType
-    /// Terminal URI (subscribable for full terminal state)
+    /// Terminal URI (subscribable for live or retained terminal state)
     public var resource: String
     /// Display title for the terminal content
     public var title: String

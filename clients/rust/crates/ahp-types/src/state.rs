@@ -3786,7 +3786,11 @@ pub struct ToolResultFileEditContent {
 /// A reference to a terminal whose output is relevant to this tool result.
 ///
 /// Clients can subscribe to the terminal's URI to stream its output in real
-/// time, providing live feedback while a tool is executing.
+/// time, providing live feedback while a tool is executing. The same URI
+/// remains subscribable for historical results: when the referenced resource's
+/// lifecycle is `exited`, subscribing returns an exited {@link TerminalState}
+/// containing the retained terminal content. Servers may reconstruct that state
+/// lazily and do not need to retain a live terminal process.
 ///
 /// When the command exits, {@link result} is filled in on the completed
 /// result, retaining the outcome for clients that did not subscribe. This
@@ -3795,7 +3799,7 @@ pub struct ToolResultFileEditContent {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolResultTerminalContent {
-    /// Terminal URI (subscribable for full terminal state)
+    /// Terminal URI (subscribable for live or retained terminal state)
     pub resource: Uri,
     /// Display title for the terminal content
     pub title: String,
