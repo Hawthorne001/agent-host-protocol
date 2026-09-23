@@ -107,5 +107,5 @@ and collection wrappers such as `{ items: ... }`.
 
 Check source and binary compatibility separately from JSON compatibility.
 Define an explicit migration for public API changes. Keep native decoding
-errors visible. Add type-level and wire checks so a known shape cannot become
-raw JSON without detection.
+errors visible. Cover known shapes with shared round-trip fixtures, not
+per-language serialization tests.
