@@ -34,7 +34,6 @@ AutomationCapabilities {
     minIntervalMinutes?: number
   }
   runCancellation?: {}
-  scheduledRunLimits?: {}
   runHistoryLimit?: number
 }
 ```
@@ -306,46 +305,72 @@ Unknown configuration entries must survive client edits. Event provenance
 recorded on a run must contain no secrets; it is descriptive context, not a
 payload clients should replay.
 
-## Scheduled run limits
+## Disable conditions
 
-A definition may cap how many **scheduled** runs it starts through the optional
-`scheduledRunLimit` field. Hosts advertise enforcement with the
-`scheduledRunLimits` capability; when it is absent the field is inert and hosts
-never limit scheduling. When present, `scheduledRunLimit` is a positive integer,
-and absence means unlimited.
+A definition may stop itself automatically through the optional
+`disableConditions` array. Each element is an `AutomationDisableCondition`
+discriminated union:
 
-The cap governs only runs created by automatic triggers. Manual runs via
-`runAutomation` never consume the allowance and are never blocked by it — a host
-continues to advertise the `run` operation even after the scheduled allowance is
-spent, exactly as it does for a disabled automation.
+- `{ kind: "finiteRuns", maxRuns }` — stop after a fixed number of **scheduled**
+  runs (`maxRuns` is a positive integer).
+- `{ kind: "finalDate", finalDate }` — stop once the ISO 8601 `finalDate`
+  passes.
 
-The host owns usage through the authoritative `AutomationEntry.scheduledRunCount`.
-It is the count for the **current allowance**, not a lifetime total, and it is
-not reconstructed from the bounded `runs` window. The host increments it
-atomically when it admits a scheduled run, so a slot is spent even if that run is
-later cancelled or fails before startup. Catch-up runs are scheduled runs and
-consume the allowance; manual runs do not. Clients display remaining allowance as
-`scheduledRunLimit - scheduledRunCount` and never keep their own count.
+Conditions combine with **logical OR**: meeting any condition disables automatic
+scheduling. For example, `[ { kind: "finiteRuns", maxRuns: 3 },
+{ kind: "finalDate", finalDate: "2026-10-01T00:00:00Z" } ]` stops after three
+scheduled runs or when the date passes, whichever happens first. Order does not
+matter. Each kind may appear **at most once**; hosts MUST reject create and
+update requests with duplicate kinds, even if their values are identical.
+An absent field or an empty array means there are no automatic disable
+conditions; neither overrides `enabled` or the configured triggers.
 
-Reaching the cap stops automatic scheduling as if `enabled` were cleared, while
-the definition retains `scheduledRunLimit`. The allowance resets — the host sets
-`scheduledRunCount` back to `0` — in exactly two cases:
+Conditions govern only runs created by automatic triggers. Manual runs via
+`runAutomation` never consume a `finiteRuns` allowance and are never blocked by
+either condition — a host continues to advertise the `run` operation even after
+the automation has stopped scheduling, exactly as it does for a disabled
+automation.
+
+For a `finiteRuns` condition the host owns usage through the authoritative
+`AutomationEntry.scheduledRunCount`. It is the count for the **current
+allowance**, not a lifetime total, and it is not reconstructed from the bounded
+`runs` window. The host increments it atomically when it admits a scheduled run,
+so a slot is spent even if that run is later cancelled or fails before startup.
+Catch-up runs are scheduled runs and consume the allowance; manual runs do not.
+Clients display remaining allowance as `maxRuns - scheduledRunCount` and never
+keep their own count.
+
+Meeting any condition sets `enabled` to `false`,
+while the definition retains its `disableConditions`. A `finalDate` stays in the
+definition after it passes, and clients should warn before re-enabling. For a
+`finiteRuns` condition, the allowance resets — the host sets `scheduledRunCount`
+back to `0` — in exactly two cases:
 
 - a disabled→enabled transition (`enabled` changes from `false` to `true`), and
-- the first time a finite cap is added to a previously unlimited automation.
+- adding a `finiteRuns` condition when none was present, including alongside an
+  existing `finalDate` condition.
 
-Editing the cap while enabled preserves usage: with two of three runs spent,
-raising the cap to five leaves three remaining. An ordinary edit that does not
-change `enabled` never resets the count.
+Editing a `finiteRuns` condition while enabled preserves usage: with two of
+three runs spent, raising `maxRuns` to five leaves three remaining. Changing,
+adding, or removing only the `finalDate` condition preserves that count, as
+does reordering the conditions. Removing `finiteRuns` makes
+`scheduledRunCount` absent. Other edits that do not change `enabled` never reset
+the count.
 
-An `automation/updateRequested` patch changes the cap through its
-`scheduledRunLimit` field, an `AutomationScheduledRunLimitPatch` discriminated
-union: omit it to leave the cap unchanged, send `{ kind: "set", value }` to set
-or change it, or `{ kind: "clear" }` to return the automation to unlimited
-scheduling. Modelling the edit as a union — rather than a nullable number —
-keeps the contradictory "set and clear at once" intent unrepresentable and
-survives every client generator, which would otherwise encode an explicit
-`null` identically to an omitted field.
+Edit conditions through `automation/updateRequested`, using the existing
+full-array replacement semantics of `AutomationDefinitionPatch`:
+
+| `changes` content | Effect |
+| --- | --- |
+| Omit `disableConditions` | Leave current conditions unchanged. |
+| `disableConditions: []` | Remove all disable conditions. |
+| `disableConditions: [...]` | Replace all conditions with the supplied array. |
+
+To keep an existing condition while editing another, include both in the
+replacement array. `null` is not a clear value. Clearing the conditions does
+not itself re-enable an automation; change `enabled` explicitly to do that.
+Create and update requests containing duplicate kinds are rejected without
+changing the definition or scheduled-run count.
 
 ## Creating, updating, and removing
 

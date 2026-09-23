@@ -1,5 +1,5 @@
 {
-  "description": "automation set preserves the definition scheduled-run cap and host-owned scheduledRunCount on the upserted entry",
+  "description": "automation set preserves both definition disable conditions and the host-owned scheduledRunCount on the upserted entry",
   "reducer": "automation",
   "initial": {
     "entries": []
@@ -12,11 +12,14 @@
         "title": "Capped",
         "message": { "text": "go", "origin": { "kind": "automation" } },
         "session": {},
-        "enabled": true,
+        "enabled": false,
         "triggers": [],
-        "scheduledRunLimit": 3
+        "disableConditions": [
+          { "kind": "finiteRuns", "maxRuns": 3 },
+          { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
+        ]
       },
-      "scheduledRunCount": 2,
+      "scheduledRunCount": 3,
       "runs": [],
       "operations": ["update", "remove", "run"],
       "createdAt": "2025-01-01T00:00:00Z",
@@ -30,11 +33,14 @@
         "title": "Capped",
         "message": { "text": "go", "origin": { "kind": "automation" } },
         "session": {},
-        "enabled": true,
+        "enabled": false,
         "triggers": [],
-        "scheduledRunLimit": 3
+        "disableConditions": [
+          { "kind": "finiteRuns", "maxRuns": 3 },
+          { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
+        ]
       },
-      "scheduledRunCount": 2,
+      "scheduledRunCount": 3,
       "runs": [],
       "operations": ["update", "remove", "run"],
       "createdAt": "2025-01-01T00:00:00Z",

@@ -191,46 +191,53 @@ export type AutomationTrigger =
   | AutomationEventTrigger;
 
 /**
- * Discriminant for a scheduled-run-limit edit carried in an automation patch.
+ * Discriminant for an {@link AutomationDisableCondition}.
  *
  * @category Automation State
  * @exhaustive
  */
-export const enum AutomationScheduledRunLimitPatchKind {
-  /** Set the finite scheduled-run cap to a positive integer. */
-  Set = 'set',
-  /** Remove the cap, returning to unlimited scheduling. */
-  Clear = 'clear',
+export const enum AutomationDisableConditionKind {
+  /** Stop scheduling after a fixed number of scheduled runs. */
+  FiniteRuns = 'finiteRuns',
+  /** Stop scheduling once a wall-clock date passes. */
+  FinalDate = 'finalDate',
 }
 
 /**
- * Sets the finite scheduled-run cap in an automation patch.
+ * Stops scheduling after a fixed number of scheduled runs.
  *
  * @category Automation State
  */
-export interface AutomationScheduledRunLimitSetPatch {
-  kind: AutomationScheduledRunLimitPatchKind.Set;
-  /** Positive-integer cap on scheduled runs. */
-  value: number;
+export interface AutomationFiniteRunsCondition {
+  kind: AutomationDisableConditionKind.FiniteRuns;
+  /**
+   * Positive-integer cap on scheduled runs.
+   * @integer
+   * @minimum 1
+   */
+  maxRuns: number;
 }
 
 /**
- * Removes the scheduled-run cap in an automation patch.
+ * Stops scheduling once a wall-clock date passes.
  *
  * @category Automation State
  */
-export interface AutomationScheduledRunLimitClearPatch {
-  kind: AutomationScheduledRunLimitPatchKind.Clear;
+export interface AutomationFinalDateCondition {
+  kind: AutomationDisableConditionKind.FinalDate;
+  /** ISO 8601 timestamp after which scheduling stops. */
+  finalDate: string;
 }
 
 /**
- * A change to {@link AutomationDefinition.scheduledRunLimit} in a patch.
+ * One self-disable rule in {@link AutomationDefinition.disableConditions}.
+ * The host disables scheduling once any rule is met (logical OR).
  *
  * @category Automation State
  */
-export type AutomationScheduledRunLimitPatch =
-  | AutomationScheduledRunLimitSetPatch
-  | AutomationScheduledRunLimitClearPatch;
+export type AutomationDisableCondition =
+  | AutomationFiniteRunsCondition
+  | AutomationFinalDateCondition;
 
 /**
  * Describes one host-defined trigger event.
@@ -330,28 +337,23 @@ export interface AutomationDefinition {
   /** Automatic triggers. An empty list means manual-only. */
   triggers: AutomationTrigger[];
   /**
-   * Optional cap on how many **scheduled** runs this automation may start
-   * within its current allowance. Absent means unlimited. When present it MUST
-   * be a positive integer.
+   * Self-disable rules combined with logical OR: the host sets
+   * {@link AutomationDefinition.enabled} to `false` when any condition is met.
+   * Absent or empty means no automatic disable conditions. Each
+   * {@link AutomationDisableConditionKind} may appear at most once; hosts MUST
+   * reject create or update requests containing duplicate kinds.
    *
-   * The limit governs only automatic runs created by triggers; manual runs via
-   * {@link RunAutomationParams | runAutomation} never consume the allowance and
-   * are never blocked by it. The host counts a scheduled run against the
-   * allowance atomically when it admits the run — a consumed slot is not
-   * refunded if that run is later cancelled or fails.
-   *
-   * Consumption is tracked by the host-owned
-   * {@link AutomationEntry.scheduledRunCount}. When the count reaches this
-   * limit the host stops automatic scheduling (equivalent to clearing
-   * {@link AutomationDefinition.enabled}) while retaining this value. A
-   * subsequent disabled→enabled transition starts a fresh allowance; editing
-   * this limit while enabled preserves the existing count. See the
+   * Only automatic (scheduled) runs are governed; manual runs via
+   * {@link RunAutomationParams | runAutomation} are never blocked. For a
+   * {@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned
+   * {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
+   * a disabled→enabled transition starts a fresh allowance. Clearing the
+   * conditions does not re-enable a disabled automation. See the
    * {@link /guide/automations | Automations Guide}.
    *
-   * Hosts advertise support with
-   * {@link AutomationCapabilities.scheduledRunLimits}.
+   * @uniqueItemsBy kind
    */
-  scheduledRunLimit?: number;
+  disableConditions?: AutomationDisableCondition[];
   /**
    * Opaque implementation-defined metadata. Clients MUST preserve unknown
    * entries when updating the definition.
@@ -376,22 +378,19 @@ export interface AutomationEntry {
   /** Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending. */
   nextRunAt?: string;
   /**
-   * Host-owned count of scheduled runs consumed against the current allowance
-   * defined by {@link AutomationDefinition.scheduledRunLimit}.
+   * Host-owned count of scheduled runs consumed against the current
+   * {@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the
+   * **current** allowance, not a lifetime total: the host resets it to `0` when
+   * a disabled→enabled transition starts a fresh allowance or a
+   * {@link AutomationFiniteRunsCondition} is added when none was present. It is NOT
+   * reconstructed from {@link runs} (a bounded, prunable window). The host
+   * increments it atomically when it admits a scheduled run, including runs
+   * later cancelled or failed.
    *
-   * This is authoritative usage for the **current** allowance, not a lifetime
-   * total: the host resets it to `0` when a disabled→enabled transition starts
-   * a fresh allowance, and when a finite cap is first added to a previously
-   * unlimited automation. It is NOT reconstructed from {@link runs}, which is a
-   * bounded, prunable window rather than a complete run ledger. The host
-   * increments it atomically when it admits a scheduled run, including a run
-   * that is later cancelled or fails.
-   *
-   * Absent when the host does not advertise
-   * {@link AutomationCapabilities.scheduledRunLimits} or the automation has no
-   * finite cap. Clients render remaining allowance as
-   * `scheduledRunLimit - scheduledRunCount`; they never maintain their own
-   * count.
+   * Absent when {@link AutomationDefinition.disableConditions} contains no
+   * {@link AutomationFiniteRunsCondition}.
+   * Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
+   * never maintain their own count.
    */
   scheduledRunCount?: number;
   /**

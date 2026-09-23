@@ -295,13 +295,6 @@ public sealed record AutomationCapabilities
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AutomationRunCancellationCapability? RunCancellation { get; init; }
 
-    /// <summary>Present when the host enforces {@link AutomationDefinition.scheduledRunLimit}
-    /// and reports usage through {@link AutomationEntry.scheduledRunCount}. Absence
-    /// means the host ignores any `scheduledRunLimit` value and never limits
-    /// scheduled runs.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public AutomationScheduledRunLimitsCapability? ScheduledRunLimits { get; init; }
-
     /// <summary>Maximum terminal entries retained in {@link AutomationEntry.runs}. Active
     /// runs are not counted toward the limit. Absence means the retention limit is
     /// implementation-defined.</summary>
@@ -337,17 +330,6 @@ public sealed record AutomationScheduleCapabilities
 /// The empty object means "supported." Clients may dispatch the action for
 /// `pending` or `running` runs; terminal runs cannot be cancelled.</summary>
 public sealed record AutomationRunCancellationCapability
-{
-}
-
-/// <summary>Presence capability for host-enforced scheduled-run limits
-/// ({@link AutomationDefinition.scheduledRunLimit} /
-/// {@link AutomationEntry.scheduledRunCount}).
-///
-/// The empty object means "supported"; fields are reserved for future
-/// limit-specific options. When absent, hosts do not enforce a scheduled-run
-/// cap and clients SHOULD hide any related affordance.</summary>
-public sealed record AutomationScheduledRunLimitsCapability
 {
 }
 

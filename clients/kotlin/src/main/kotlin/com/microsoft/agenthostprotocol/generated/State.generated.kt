@@ -1089,20 +1089,20 @@ enum class AutomationTriggerKind {
 }
 
 /**
- * Discriminant for a scheduled-run-limit edit carried in an automation patch.
+ * Discriminant for an {@link AutomationDisableCondition}.
  */
 @Serializable
-enum class AutomationScheduledRunLimitPatchKind {
+enum class AutomationDisableConditionKind {
     /**
-     * Set the finite scheduled-run cap to a positive integer.
+     * Stop scheduling after a fixed number of scheduled runs.
      */
-    @SerialName("set")
-    SET,
+    @SerialName("finiteRuns")
+    FINITE_RUNS,
     /**
-     * Remove the cap, returning to unlimited scheduling.
+     * Stop scheduling once a wall-clock date passes.
      */
-    @SerialName("clear")
-    CLEAR
+    @SerialName("finalDate")
+    FINAL_DATE
 }
 
 /**
@@ -5395,28 +5395,21 @@ data class AutomationDefinition(
      */
     val triggers: List<AutomationTrigger>,
     /**
-     * Optional cap on how many **scheduled** runs this automation may start
-     * within its current allowance. Absent means unlimited. When present it MUST
-     * be a positive integer.
+     * Self-disable rules combined with logical OR: the host sets
+     * {@link AutomationDefinition.enabled} to `false` when any condition is met.
+     * Absent or empty means no automatic disable conditions. Each
+     * {@link AutomationDisableConditionKind} may appear at most once; hosts MUST
+     * reject create or update requests containing duplicate kinds.
      *
-     * The limit governs only automatic runs created by triggers; manual runs via
-     * {@link RunAutomationParams | runAutomation} never consume the allowance and
-     * are never blocked by it. The host counts a scheduled run against the
-     * allowance atomically when it admits the run — a consumed slot is not
-     * refunded if that run is later cancelled or fails.
-     *
-     * Consumption is tracked by the host-owned
-     * {@link AutomationEntry.scheduledRunCount}. When the count reaches this
-     * limit the host stops automatic scheduling (equivalent to clearing
-     * {@link AutomationDefinition.enabled}) while retaining this value. A
-     * subsequent disabled→enabled transition starts a fresh allowance; editing
-     * this limit while enabled preserves the existing count. See the
+     * Only automatic (scheduled) runs are governed; manual runs via
+     * {@link RunAutomationParams | runAutomation} are never blocked. For a
+     * {@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned
+     * {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
+     * a disabled→enabled transition starts a fresh allowance. Clearing the
+     * conditions does not re-enable a disabled automation. See the
      * {@link /guide/automations | Automations Guide}.
-     *
-     * Hosts advertise support with
-     * {@link AutomationCapabilities.scheduledRunLimits}.
      */
-    val scheduledRunLimit: Long? = null,
+    val disableConditions: List<AutomationDisableCondition>? = null,
     /**
      * Opaque implementation-defined metadata. Clients MUST preserve unknown
      * entries when updating the definition.
@@ -5450,19 +5443,12 @@ data class AutomationDefinitionPatch(
      */
     val triggers: List<AutomationTrigger>? = null,
     /**
-     * Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the
-     * current cap unchanged; supply a
-     * {@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a
-     * positive integer to set or change the cap, or a
-     * {@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to
-     * return the automation to unlimited scheduling.
-     *
-     * Changing a cap while enabled preserves usage. Setting the first finite cap
-     * on a previously unlimited automation starts a fresh allowance. Hosts reject
-     * this field when they do not advertise
-     * {@link AutomationCapabilities.scheduledRunLimits}.
+     * Complete replacement {@link AutomationDefinition.disableConditions}.
+     * Omit to leave unchanged; supply an empty array to remove all conditions.
+     * Each kind may appear at most once; hosts MUST reject duplicate kinds.
+     * Clearing conditions does not change {@link AutomationDefinition.enabled}.
      */
-    val scheduledRunLimit: AutomationScheduledRunLimitPatch? = null,
+    val disableConditions: List<AutomationDisableCondition>? = null,
     /**
      * Complete replacement {@link AutomationDefinition._meta}.
      */
@@ -5471,17 +5457,21 @@ data class AutomationDefinitionPatch(
 )
 
 @Serializable
-data class AutomationScheduledRunLimitSetPatch(
-    val kind: AutomationScheduledRunLimitPatchKind,
+data class AutomationFiniteRunsCondition(
+    val kind: AutomationDisableConditionKind,
     /**
      * Positive-integer cap on scheduled runs.
      */
-    val value: Long
+    val maxRuns: Long
 )
 
 @Serializable
-data class AutomationScheduledRunLimitClearPatch(
-    val kind: AutomationScheduledRunLimitPatchKind
+data class AutomationFinalDateCondition(
+    val kind: AutomationDisableConditionKind,
+    /**
+     * ISO 8601 timestamp after which scheduling stops.
+     */
+    val finalDate: String
 )
 
 @Serializable
@@ -5499,22 +5489,19 @@ data class AutomationEntry(
      */
     val nextRunAt: String? = null,
     /**
-     * Host-owned count of scheduled runs consumed against the current allowance
-     * defined by {@link AutomationDefinition.scheduledRunLimit}.
+     * Host-owned count of scheduled runs consumed against the current
+     * {@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the
+     * **current** allowance, not a lifetime total: the host resets it to `0` when
+     * a disabled→enabled transition starts a fresh allowance or a
+     * {@link AutomationFiniteRunsCondition} is added when none was present. It is NOT
+     * reconstructed from {@link runs} (a bounded, prunable window). The host
+     * increments it atomically when it admits a scheduled run, including runs
+     * later cancelled or failed.
      *
-     * This is authoritative usage for the **current** allowance, not a lifetime
-     * total: the host resets it to `0` when a disabled→enabled transition starts
-     * a fresh allowance, and when a finite cap is first added to a previously
-     * unlimited automation. It is NOT reconstructed from {@link runs}, which is a
-     * bounded, prunable window rather than a complete run ledger. The host
-     * increments it atomically when it admits a scheduled run, including a run
-     * that is later cancelled or fails.
-     *
-     * Absent when the host does not advertise
-     * {@link AutomationCapabilities.scheduledRunLimits} or the automation has no
-     * finite cap. Clients render remaining allowance as
-     * `scheduledRunLimit - scheduledRunCount`; they never maintain their own
-     * count.
+     * Absent when {@link AutomationDefinition.disableConditions} contains no
+     * {@link AutomationFiniteRunsCondition}.
+     * Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
+     * never maintain their own count.
      */
     val scheduledRunCount: Long? = null,
     /**
@@ -6926,44 +6913,44 @@ internal object AutomationTriggerSerializer : KSerializer<AutomationTrigger> {
     }
 }
 
-@Serializable(with = AutomationScheduledRunLimitPatchSerializer::class)
-sealed interface AutomationScheduledRunLimitPatch
+@Serializable(with = AutomationDisableConditionSerializer::class)
+sealed interface AutomationDisableCondition
 
 @JvmInline
-value class AutomationScheduledRunLimitPatchSet(val value: AutomationScheduledRunLimitSetPatch) : AutomationScheduledRunLimitPatch
+value class AutomationDisableConditionFiniteRuns(val value: AutomationFiniteRunsCondition) : AutomationDisableCondition
 @JvmInline
-value class AutomationScheduledRunLimitPatchClear(val value: AutomationScheduledRunLimitClearPatch) : AutomationScheduledRunLimitPatch
+value class AutomationDisableConditionFinalDate(val value: AutomationFinalDateCondition) : AutomationDisableCondition
 
-internal object AutomationScheduledRunLimitPatchSerializer : KSerializer<AutomationScheduledRunLimitPatch> {
+internal object AutomationDisableConditionSerializer : KSerializer<AutomationDisableCondition> {
     override val descriptor: SerialDescriptor =
-        buildClassSerialDescriptor("AutomationScheduledRunLimitPatch")
+        buildClassSerialDescriptor("AutomationDisableCondition")
 
-    override fun deserialize(decoder: Decoder): AutomationScheduledRunLimitPatch {
+    override fun deserialize(decoder: Decoder): AutomationDisableCondition {
         val input = decoder as? JsonDecoder
-            ?: error("AutomationScheduledRunLimitPatch can only be deserialized from JSON")
+            ?: error("AutomationDisableCondition can only be deserialized from JSON")
         val element = input.decodeJsonElement()
         val obj = element as? JsonObject
-            ?: error("Expected JsonObject for AutomationScheduledRunLimitPatch")
+            ?: error("Expected JsonObject for AutomationDisableCondition")
         val discriminant = (obj["kind"] as? JsonPrimitive)?.content
-            ?: error("Missing kind discriminator on AutomationScheduledRunLimitPatch")
+            ?: error("Missing kind discriminator on AutomationDisableCondition")
         return when (discriminant) {
-            "set" -> AutomationScheduledRunLimitPatchSet(input.json.decodeFromJsonElement(AutomationScheduledRunLimitSetPatch.serializer(), element))
-            "clear" -> AutomationScheduledRunLimitPatchClear(input.json.decodeFromJsonElement(AutomationScheduledRunLimitClearPatch.serializer(), element))
-            else -> error("Unknown AutomationScheduledRunLimitPatch discriminator: $discriminant")
+            "finiteRuns" -> AutomationDisableConditionFiniteRuns(input.json.decodeFromJsonElement(AutomationFiniteRunsCondition.serializer(), element))
+            "finalDate" -> AutomationDisableConditionFinalDate(input.json.decodeFromJsonElement(AutomationFinalDateCondition.serializer(), element))
+            else -> error("Unknown AutomationDisableCondition discriminator: $discriminant")
         }
     }
 
-    override fun serialize(encoder: Encoder, value: AutomationScheduledRunLimitPatch) {
+    override fun serialize(encoder: Encoder, value: AutomationDisableCondition) {
         val output = encoder as? JsonEncoder
-            ?: error("AutomationScheduledRunLimitPatch can only be serialized to JSON")
+            ?: error("AutomationDisableCondition can only be serialized to JSON")
         val element: JsonElement = when (value) {
-            is AutomationScheduledRunLimitPatchSet -> output.json.encodeToJsonElement(AutomationScheduledRunLimitSetPatch.serializer(), value.value)
-            is AutomationScheduledRunLimitPatchClear -> output.json.encodeToJsonElement(AutomationScheduledRunLimitClearPatch.serializer(), value.value)
+            is AutomationDisableConditionFiniteRuns -> output.json.encodeToJsonElement(AutomationFiniteRunsCondition.serializer(), value.value)
+            is AutomationDisableConditionFinalDate -> output.json.encodeToJsonElement(AutomationFinalDateCondition.serializer(), value.value)
         }
         val encodedObject = element.jsonObject.toMutableMap()
         val discriminant = when (value) {
-            is AutomationScheduledRunLimitPatchSet -> "set"
-            is AutomationScheduledRunLimitPatchClear -> "clear"
+            is AutomationDisableConditionFiniteRuns -> "finiteRuns"
+            is AutomationDisableConditionFinalDate -> "finalDate"
         }
         if (discriminant != null) encodedObject["kind"] = JsonPrimitive(discriminant)
         output.encodeJsonElement(JsonObject(encodedObject))

@@ -1,4 +1,0 @@
-{
-  "type": "added",
-  "message": "`AutomationDefinition.scheduledRunLimit` cap and host-owned `AutomationEntry.scheduledRunCount` usage for scheduled-run limits, gated by the `AutomationCapabilities.scheduledRunLimits` capability. `AutomationDefinitionPatch.scheduledRunLimit` takes an `AutomationScheduledRunLimitPatch` discriminated union (`set` with a value, or `clear` to return to unlimited scheduling)."
-}

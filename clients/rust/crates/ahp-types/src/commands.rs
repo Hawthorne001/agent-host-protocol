@@ -339,12 +339,6 @@ pub struct AutomationCapabilities {
     /// automation runs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_cancellation: Option<AutomationRunCancellationCapability>,
-    /// Present when the host enforces {@link AutomationDefinition.scheduledRunLimit}
-    /// and reports usage through {@link AutomationEntry.scheduledRunCount}. Absence
-    /// means the host ignores any `scheduledRunLimit` value and never limits
-    /// scheduled runs.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub scheduled_run_limits: Option<AutomationScheduledRunLimitsCapability>,
     /// Maximum terminal entries retained in {@link AutomationEntry.runs}. Active
     /// runs are not counted toward the limit. Absence means the retention limit is
     /// implementation-defined.
@@ -383,17 +377,6 @@ pub struct AutomationScheduleCapabilities {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AutomationRunCancellationCapability {}
-
-/// Presence capability for host-enforced scheduled-run limits
-/// ({@link AutomationDefinition.scheduledRunLimit} /
-/// {@link AutomationEntry.scheduledRunCount}).
-///
-/// The empty object means "supported"; fields are reserved for future
-/// limit-specific options. When absent, hosts do not enforce a scheduled-run
-/// cap and clients SHOULD hide any related affordance.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AutomationScheduledRunLimitsCapability {}
 
 /// Identifies a protocol implementation — the software (and build) on one end
 /// of the connection, as distinct from the {@link AgentInfo | agent persona} it

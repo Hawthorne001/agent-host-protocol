@@ -319,13 +319,6 @@ export interface AutomationCapabilities {
    */
   runCancellation?: AutomationRunCancellationCapability;
   /**
-   * Present when the host enforces {@link AutomationDefinition.scheduledRunLimit}
-   * and reports usage through {@link AutomationEntry.scheduledRunCount}. Absence
-   * means the host ignores any `scheduledRunLimit` value and never limits
-   * scheduled runs.
-   */
-  scheduledRunLimits?: AutomationScheduledRunLimitsCapability;
-  /**
    * Maximum terminal entries retained in {@link AutomationEntry.runs}. Active
    * runs are not counted toward the limit. Absence means the retention limit is
    * implementation-defined.
@@ -371,19 +364,6 @@ export interface AutomationScheduleCapabilities {
  * @category Commands
  */
 export interface AutomationRunCancellationCapability {}
-
-/**
- * Presence capability for host-enforced scheduled-run limits
- * ({@link AutomationDefinition.scheduledRunLimit} /
- * {@link AutomationEntry.scheduledRunCount}).
- *
- * The empty object means "supported"; fields are reserved for future
- * limit-specific options. When absent, hosts do not enforce a scheduled-run
- * cap and clients SHOULD hide any related affordance.
- *
- * @category Commands
- */
-export interface AutomationScheduledRunLimitsCapability {}
 
 // ─── ping ────────────────────────────────────────────────────────────────────
 

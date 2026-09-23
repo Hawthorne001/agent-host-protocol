@@ -1,20 +1,20 @@
 {
-  "name": "automation-set-scheduled-run-limit-patch",
+  "name": "automation-set-disable-condition",
   "group": "A",
-  "description": "An update request setting a finite scheduled-run cap carries a set operation on scheduledRunLimit.",
+  "description": "An automation update replaces disableConditions with a single finite-runs condition.",
   "type": "StateAction",
   "input": {
     "type": "automation/updateRequested",
     "resource": "ahp-automation:/capped",
     "changes": {
-      "scheduledRunLimit": { "kind": "set", "value": 3 }
+      "disableConditions": [{ "kind": "finiteRuns", "maxRuns": 3 }]
     }
   },
   "acceptableOutputs": [{
     "type": "automation/updateRequested",
     "resource": "ahp-automation:/capped",
     "changes": {
-      "scheduledRunLimit": { "kind": "set", "value": 3 }
+      "disableConditions": [{ "kind": "finiteRuns", "maxRuns": 3 }]
     }
   }]
 }

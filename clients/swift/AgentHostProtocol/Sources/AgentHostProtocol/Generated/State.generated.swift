@@ -1075,12 +1075,12 @@ public enum AutomationTriggerKind: String, Codable, Sendable {
     case event = "event"
 }
 
-/// Discriminant for a scheduled-run-limit edit carried in an automation patch.
-public enum AutomationScheduledRunLimitPatchKind: String, Codable, Sendable {
-    /// Set the finite scheduled-run cap to a positive integer.
-    case set = "set"
-    /// Remove the cap, returning to unlimited scheduling.
-    case clear = "clear"
+/// Discriminant for an {@link AutomationDisableCondition}.
+public enum AutomationDisableConditionKind: String, Codable, Sendable {
+    /// Stop scheduling after a fixed number of scheduled runs.
+    case finiteRuns = "finiteRuns"
+    /// Stop scheduling once a wall-clock date passes.
+    case finalDate = "finalDate"
 }
 
 /// Lifecycle status of one automation run.
@@ -6301,27 +6301,20 @@ public struct AutomationDefinition: Codable, Sendable {
     public var enabled: Bool
     /// Automatic triggers. An empty list means manual-only.
     public var triggers: [AutomationTrigger]
-    /// Optional cap on how many **scheduled** runs this automation may start
-    /// within its current allowance. Absent means unlimited. When present it MUST
-    /// be a positive integer.
+    /// Self-disable rules combined with logical OR: the host sets
+    /// {@link AutomationDefinition.enabled} to `false` when any condition is met.
+    /// Absent or empty means no automatic disable conditions. Each
+    /// {@link AutomationDisableConditionKind} may appear at most once; hosts MUST
+    /// reject create or update requests containing duplicate kinds.
     ///
-    /// The limit governs only automatic runs created by triggers; manual runs via
-    /// {@link RunAutomationParams | runAutomation} never consume the allowance and
-    /// are never blocked by it. The host counts a scheduled run against the
-    /// allowance atomically when it admits the run — a consumed slot is not
-    /// refunded if that run is later cancelled or fails.
-    ///
-    /// Consumption is tracked by the host-owned
-    /// {@link AutomationEntry.scheduledRunCount}. When the count reaches this
-    /// limit the host stops automatic scheduling (equivalent to clearing
-    /// {@link AutomationDefinition.enabled}) while retaining this value. A
-    /// subsequent disabled→enabled transition starts a fresh allowance; editing
-    /// this limit while enabled preserves the existing count. See the
+    /// Only automatic (scheduled) runs are governed; manual runs via
+    /// {@link RunAutomationParams | runAutomation} are never blocked. For a
+    /// {@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned
+    /// {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
+    /// a disabled→enabled transition starts a fresh allowance. Clearing the
+    /// conditions does not re-enable a disabled automation. See the
     /// {@link /guide/automations | Automations Guide}.
-    ///
-    /// Hosts advertise support with
-    /// {@link AutomationCapabilities.scheduledRunLimits}.
-    public var scheduledRunLimit: Int?
+    public var disableConditions: [AutomationDisableCondition]?
     /// Opaque implementation-defined metadata. Clients MUST preserve unknown
     /// entries when updating the definition.
     public var meta: [String: AnyCodable]?
@@ -6332,7 +6325,7 @@ public struct AutomationDefinition: Codable, Sendable {
         case session
         case enabled
         case triggers
-        case scheduledRunLimit
+        case disableConditions
         case meta = "_meta"
     }
 
@@ -6342,7 +6335,7 @@ public struct AutomationDefinition: Codable, Sendable {
         session: AutomationSessionTemplate,
         enabled: Bool,
         triggers: [AutomationTrigger],
-        scheduledRunLimit: Int? = nil,
+        disableConditions: [AutomationDisableCondition]? = nil,
         meta: [String: AnyCodable]? = nil
     ) {
         self.title = title
@@ -6350,7 +6343,7 @@ public struct AutomationDefinition: Codable, Sendable {
         self.session = session
         self.enabled = enabled
         self.triggers = triggers
-        self.scheduledRunLimit = scheduledRunLimit
+        self.disableConditions = disableConditions
         self.meta = meta
     }
 }
@@ -6368,18 +6361,11 @@ public struct AutomationDefinitionPatch: Codable, Sendable {
     /// Complete replacement {@link AutomationDefinition.triggers}. The host
     /// validates event ids and normalizes event-trigger titles and descriptions.
     public var triggers: [AutomationTrigger]?
-    /// Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the
-    /// current cap unchanged; supply a
-    /// {@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a
-    /// positive integer to set or change the cap, or a
-    /// {@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to
-    /// return the automation to unlimited scheduling.
-    ///
-    /// Changing a cap while enabled preserves usage. Setting the first finite cap
-    /// on a previously unlimited automation starts a fresh allowance. Hosts reject
-    /// this field when they do not advertise
-    /// {@link AutomationCapabilities.scheduledRunLimits}.
-    public var scheduledRunLimit: AutomationScheduledRunLimitPatch?
+    /// Complete replacement {@link AutomationDefinition.disableConditions}.
+    /// Omit to leave unchanged; supply an empty array to remove all conditions.
+    /// Each kind may appear at most once; hosts MUST reject duplicate kinds.
+    /// Clearing conditions does not change {@link AutomationDefinition.enabled}.
+    public var disableConditions: [AutomationDisableCondition]?
     /// Complete replacement {@link AutomationDefinition._meta}.
     public var meta: [String: AnyCodable]?
 
@@ -6389,7 +6375,7 @@ public struct AutomationDefinitionPatch: Codable, Sendable {
         case session
         case enabled
         case triggers
-        case scheduledRunLimit
+        case disableConditions
         case meta = "_meta"
     }
 
@@ -6399,7 +6385,7 @@ public struct AutomationDefinitionPatch: Codable, Sendable {
         session: AutomationSessionTemplate? = nil,
         enabled: Bool? = nil,
         triggers: [AutomationTrigger]? = nil,
-        scheduledRunLimit: AutomationScheduledRunLimitPatch? = nil,
+        disableConditions: [AutomationDisableCondition]? = nil,
         meta: [String: AnyCodable]? = nil
     ) {
         self.title = title
@@ -6407,32 +6393,36 @@ public struct AutomationDefinitionPatch: Codable, Sendable {
         self.session = session
         self.enabled = enabled
         self.triggers = triggers
-        self.scheduledRunLimit = scheduledRunLimit
+        self.disableConditions = disableConditions
         self.meta = meta
     }
 }
 
-public struct AutomationScheduledRunLimitSetPatch: Codable, Sendable {
-    public var kind: AutomationScheduledRunLimitPatchKind
+public struct AutomationFiniteRunsCondition: Codable, Sendable {
+    public var kind: AutomationDisableConditionKind
     /// Positive-integer cap on scheduled runs.
-    public var value: Int
+    public var maxRuns: Int
 
     public init(
-        kind: AutomationScheduledRunLimitPatchKind,
-        value: Int
+        kind: AutomationDisableConditionKind,
+        maxRuns: Int
     ) {
         self.kind = kind
-        self.value = value
+        self.maxRuns = maxRuns
     }
 }
 
-public struct AutomationScheduledRunLimitClearPatch: Codable, Sendable {
-    public var kind: AutomationScheduledRunLimitPatchKind
+public struct AutomationFinalDateCondition: Codable, Sendable {
+    public var kind: AutomationDisableConditionKind
+    /// ISO 8601 timestamp after which scheduling stops.
+    public var finalDate: String
 
     public init(
-        kind: AutomationScheduledRunLimitPatchKind
+        kind: AutomationDisableConditionKind,
+        finalDate: String
     ) {
         self.kind = kind
+        self.finalDate = finalDate
     }
 }
 
@@ -6443,22 +6433,19 @@ public struct AutomationEntry: Codable, Sendable {
     public var definition: AutomationDefinition
     /// Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending.
     public var nextRunAt: String?
-    /// Host-owned count of scheduled runs consumed against the current allowance
-    /// defined by {@link AutomationDefinition.scheduledRunLimit}.
+    /// Host-owned count of scheduled runs consumed against the current
+    /// {@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the
+    /// **current** allowance, not a lifetime total: the host resets it to `0` when
+    /// a disabled→enabled transition starts a fresh allowance or a
+    /// {@link AutomationFiniteRunsCondition} is added when none was present. It is NOT
+    /// reconstructed from {@link runs} (a bounded, prunable window). The host
+    /// increments it atomically when it admits a scheduled run, including runs
+    /// later cancelled or failed.
     ///
-    /// This is authoritative usage for the **current** allowance, not a lifetime
-    /// total: the host resets it to `0` when a disabled→enabled transition starts
-    /// a fresh allowance, and when a finite cap is first added to a previously
-    /// unlimited automation. It is NOT reconstructed from {@link runs}, which is a
-    /// bounded, prunable window rather than a complete run ledger. The host
-    /// increments it atomically when it admits a scheduled run, including a run
-    /// that is later cancelled or fails.
-    ///
-    /// Absent when the host does not advertise
-    /// {@link AutomationCapabilities.scheduledRunLimits} or the automation has no
-    /// finite cap. Clients render remaining allowance as
-    /// `scheduledRunLimit - scheduledRunCount`; they never maintain their own
-    /// count.
+    /// Absent when {@link AutomationDefinition.disableConditions} contains no
+    /// {@link AutomationFiniteRunsCondition}.
+    /// Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
+    /// never maintain their own count.
     public var scheduledRunCount: Int?
     /// Newest-first retained run summaries. This is a bounded window; use
     /// {@link FetchAutomationRunsParams | fetchAutomationRuns} when
@@ -7722,9 +7709,9 @@ public enum AutomationTrigger: Codable, Sendable {
     }
 }
 
-public enum AutomationScheduledRunLimitPatch: Codable, Sendable {
-    case set(AutomationScheduledRunLimitSetPatch)
-    case clear(AutomationScheduledRunLimitClearPatch)
+public enum AutomationDisableCondition: Codable, Sendable {
+    case finiteRuns(AutomationFiniteRunsCondition)
+    case finalDate(AutomationFinalDateCondition)
 
     private enum DiscriminantKey: String, CodingKey {
         case discriminant = "kind"
@@ -7734,22 +7721,22 @@ public enum AutomationScheduledRunLimitPatch: Codable, Sendable {
         let container = try decoder.container(keyedBy: DiscriminantKey.self)
         let discriminant = try container.decode(String.self, forKey: .discriminant)
         switch discriminant {
-        case "set":
-            self = .set(try AutomationScheduledRunLimitSetPatch(from: decoder))
-        case "clear":
-            self = .clear(try AutomationScheduledRunLimitClearPatch(from: decoder))
+        case "finiteRuns":
+            self = .finiteRuns(try AutomationFiniteRunsCondition(from: decoder))
+        case "finalDate":
+            self = .finalDate(try AutomationFinalDateCondition(from: decoder))
         default:
-            throw DecodingError.dataCorruptedError(forKey: .discriminant, in: container, debugDescription: "Unknown AutomationScheduledRunLimitPatch discriminant: \(discriminant)")
+            throw DecodingError.dataCorruptedError(forKey: .discriminant, in: container, debugDescription: "Unknown AutomationDisableCondition discriminant: \(discriminant)")
         }
     }
 
     public func encode(to encoder: Encoder) throws {
         switch self {
-        case .set(var value):
-            value.kind = .set
+        case .finiteRuns(var value):
+            value.kind = .finiteRuns
             try value.encode(to: encoder)
-        case .clear(var value):
-            value.kind = .clear
+        case .finalDate(var value):
+            value.kind = .finalDate
             try value.encode(to: encoder)
         }
     }

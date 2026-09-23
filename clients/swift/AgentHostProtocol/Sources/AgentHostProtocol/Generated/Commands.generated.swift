@@ -409,11 +409,6 @@ public struct AutomationCapabilities: Codable, Sendable {
     /// Present when clients may request cancellation of `pending` or `running`
     /// automation runs.
     public var runCancellation: AutomationRunCancellationCapability?
-    /// Present when the host enforces {@link AutomationDefinition.scheduledRunLimit}
-    /// and reports usage through {@link AutomationEntry.scheduledRunCount}. Absence
-    /// means the host ignores any `scheduledRunLimit` value and never limits
-    /// scheduled runs.
-    public var scheduledRunLimits: AutomationScheduledRunLimitsCapability?
     /// Maximum terminal entries retained in {@link AutomationEntry.runs}. Active
     /// runs are not counted toward the limit. Absence means the retention limit is
     /// implementation-defined.
@@ -423,13 +418,11 @@ public struct AutomationCapabilities: Codable, Sendable {
         create: AutomationCreateCapability? = nil,
         schedules: AutomationScheduleCapabilities? = nil,
         runCancellation: AutomationRunCancellationCapability? = nil,
-        scheduledRunLimits: AutomationScheduledRunLimitsCapability? = nil,
         runHistoryLimit: Int? = nil
     ) {
         self.create = create
         self.schedules = schedules
         self.runCancellation = runCancellation
-        self.scheduledRunLimits = scheduledRunLimits
         self.runHistoryLimit = runHistoryLimit
     }
 }
@@ -456,14 +449,6 @@ public struct AutomationScheduleCapabilities: Codable, Sendable {
 }
 
 public struct AutomationRunCancellationCapability: Codable, Sendable {
-
-    public init(
-
-    ) {
-    }
-}
-
-public struct AutomationScheduledRunLimitsCapability: Codable, Sendable {
 
     public init(
 

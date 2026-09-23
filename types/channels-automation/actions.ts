@@ -10,9 +10,9 @@ import type { Message } from '../channels-chat/state.js';
 import type { URI } from '../common/state.js';
 import type {
   AutomationDefinition,
+  AutomationDisableCondition,
   AutomationEntry,
   AutomationOperation,
-  AutomationScheduledRunLimitPatch,
   AutomationSessionTemplate,
   AutomationState,
   AutomationTrigger,
@@ -44,19 +44,14 @@ export interface AutomationDefinitionPatch {
    */
   triggers?: AutomationTrigger[];
   /**
-   * Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the
-   * current cap unchanged; supply a
-   * {@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a
-   * positive integer to set or change the cap, or a
-   * {@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to
-   * return the automation to unlimited scheduling.
+   * Complete replacement {@link AutomationDefinition.disableConditions}.
+   * Omit to leave unchanged; supply an empty array to remove all conditions.
+   * Each kind may appear at most once; hosts MUST reject duplicate kinds.
+   * Clearing conditions does not change {@link AutomationDefinition.enabled}.
    *
-   * Changing a cap while enabled preserves usage. Setting the first finite cap
-   * on a previously unlimited automation starts a fresh allowance. Hosts reject
-   * this field when they do not advertise
-   * {@link AutomationCapabilities.scheduledRunLimits}.
+   * @uniqueItemsBy kind
    */
-  scheduledRunLimit?: AutomationScheduledRunLimitPatch;
+  disableConditions?: AutomationDisableCondition[];
   /** Complete replacement {@link AutomationDefinition._meta}. */
   _meta?: Record<string, unknown>;
 }

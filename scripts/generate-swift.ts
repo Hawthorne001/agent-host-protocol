@@ -684,7 +684,7 @@ const STATE_ENUMS = [
   'ChangesetStatus', 'ChangesetOperationStatus', 'ChangesetOperationScope', 'ResourceChangeType',
   'SessionOriginKind',
   'AutomationOperation', 'AutomationMisfirePolicy', 'AutomationTriggerKind',
-  'AutomationScheduledRunLimitPatchKind',
+  'AutomationDisableConditionKind',
   'AutomationRunStatus', 'AutomationRunOriginKind',
 ];
 
@@ -748,7 +748,7 @@ const STATE_STRUCTS = [
   'AutomationTriggerEventDefinition', 'AutomationTriggerDefinition',
   'AutomationSessionTemplate', 'AutomationDefinition',
   'AutomationDefinitionPatch',
-  'AutomationScheduledRunLimitSetPatch', 'AutomationScheduledRunLimitClearPatch',
+  'AutomationFiniteRunsCondition', 'AutomationFinalDateCondition',
   'AutomationEntry', 'AutomationState',
   'AutomationManualRunOrigin', 'AutomationTriggeredRunOrigin',
   'AutomationPendingRunLifecycle', 'AutomationRunningRunLifecycle',
@@ -1246,12 +1246,12 @@ const AUTOMATION_TRIGGER_UNION: UnionConfig = {
   injectDiscriminantOnEncode: true,
 };
 
-const AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION: UnionConfig = {
-  name: 'AutomationScheduledRunLimitPatch',
+const AUTOMATION_DISABLE_CONDITION_UNION: UnionConfig = {
+  name: 'AutomationDisableCondition',
   discriminantField: 'kind',
   variants: [
-    { caseName: 'set', structName: 'AutomationScheduledRunLimitSetPatch', discriminantValue: 'set' },
-    { caseName: 'clear', structName: 'AutomationScheduledRunLimitClearPatch', discriminantValue: 'clear' },
+    { caseName: 'finiteRuns', structName: 'AutomationFiniteRunsCondition', discriminantValue: 'finiteRuns' },
+    { caseName: 'finalDate', structName: 'AutomationFinalDateCondition', discriminantValue: 'finalDate' },
   ],
   injectDiscriminantOnEncode: true,
 };
@@ -1358,7 +1358,7 @@ function generateStateFile(project: Project): string {
   lines.push('');
   lines.push(generateDiscriminatedUnion(project, AUTOMATION_TRIGGER_UNION));
   lines.push('');
-  lines.push(generateDiscriminatedUnion(project, AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION));
+  lines.push(generateDiscriminatedUnion(project, AUTOMATION_DISABLE_CONDITION_UNION));
   lines.push('');
   lines.push(generateDiscriminatedUnion(project, AUTOMATION_RUN_ORIGIN_UNION));
   lines.push('');
@@ -1647,7 +1647,6 @@ const COMMAND_STRUCTS = [
   'AutomationCreateCapability',
   'AutomationScheduleCapabilities',
   'AutomationRunCancellationCapability',
-  'AutomationScheduledRunLimitsCapability',
   'Implementation',
   'ReconnectParams', 'ReconnectReplayResult', 'ReconnectSnapshotResult',
   'SubscribeParams', 'SubscribeView', 'SubscriptionDeliveryOptions', 'SubscribeResult',
@@ -2398,7 +2397,7 @@ function checkExhaustiveness(project: Project): void {
     'ReconnectResult',              // RECONNECT_RESULT_UNION discriminated union
     'SessionOrigin',                // SESSION_ORIGIN_UNION discriminated union
     'AutomationTrigger',            // AUTOMATION_TRIGGER_UNION discriminated union
-    'AutomationScheduledRunLimitPatch', // AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION discriminated union
+    'AutomationDisableCondition', // AUTOMATION_DISABLE_CONDITION_UNION discriminated union
     'AutomationRunOrigin',          // AUTOMATION_RUN_ORIGIN_UNION discriminated union
     'AutomationRunLifecycle',       // AUTOMATION_RUN_LIFECYCLE_UNION discriminated union
     'ForkChatSource',               // generateFixedChatSourceBranchSwift()

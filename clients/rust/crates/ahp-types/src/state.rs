@@ -1388,15 +1388,15 @@ pub enum AutomationTriggerKind {
     Event,
 }
 
-/// Discriminant for a scheduled-run-limit edit carried in an automation patch.
+/// Discriminant for an {@link AutomationDisableCondition}.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum AutomationScheduledRunLimitPatchKind {
-    /// Set the finite scheduled-run cap to a positive integer.
-    #[serde(rename = "set")]
-    Set,
-    /// Remove the cap, returning to unlimited scheduling.
-    #[serde(rename = "clear")]
-    Clear,
+pub enum AutomationDisableConditionKind {
+    /// Stop scheduling after a fixed number of scheduled runs.
+    #[serde(rename = "finiteRuns")]
+    FiniteRuns,
+    /// Stop scheduling once a wall-clock date passes.
+    #[serde(rename = "finalDate")]
+    FinalDate,
 }
 
 /// Lifecycle status of one automation run.
@@ -5463,28 +5463,21 @@ pub struct AutomationDefinition {
     pub enabled: bool,
     /// Automatic triggers. An empty list means manual-only.
     pub triggers: Vec<AutomationTrigger>,
-    /// Optional cap on how many **scheduled** runs this automation may start
-    /// within its current allowance. Absent means unlimited. When present it MUST
-    /// be a positive integer.
+    /// Self-disable rules combined with logical OR: the host sets
+    /// {@link AutomationDefinition.enabled} to `false` when any condition is met.
+    /// Absent or empty means no automatic disable conditions. Each
+    /// {@link AutomationDisableConditionKind} may appear at most once; hosts MUST
+    /// reject create or update requests containing duplicate kinds.
     ///
-    /// The limit governs only automatic runs created by triggers; manual runs via
-    /// {@link RunAutomationParams | runAutomation} never consume the allowance and
-    /// are never blocked by it. The host counts a scheduled run against the
-    /// allowance atomically when it admits the run — a consumed slot is not
-    /// refunded if that run is later cancelled or fails.
-    ///
-    /// Consumption is tracked by the host-owned
-    /// {@link AutomationEntry.scheduledRunCount}. When the count reaches this
-    /// limit the host stops automatic scheduling (equivalent to clearing
-    /// {@link AutomationDefinition.enabled}) while retaining this value. A
-    /// subsequent disabled→enabled transition starts a fresh allowance; editing
-    /// this limit while enabled preserves the existing count. See the
+    /// Only automatic (scheduled) runs are governed; manual runs via
+    /// {@link RunAutomationParams | runAutomation} are never blocked. For a
+    /// {@link AutomationFiniteRunsCondition}, usage is tracked by the host-owned
+    /// {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
+    /// a disabled→enabled transition starts a fresh allowance. Clearing the
+    /// conditions does not re-enable a disabled automation. See the
     /// {@link /guide/automations | Automations Guide}.
-    ///
-    /// Hosts advertise support with
-    /// {@link AutomationCapabilities.scheduledRunLimits}.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub scheduled_run_limit: Option<i64>,
+    pub disable_conditions: Option<Vec<AutomationDisableCondition>>,
     /// Opaque implementation-defined metadata. Clients MUST preserve unknown
     /// entries when updating the definition.
     #[serde(rename = "_meta", default, skip_serializing_if = "Option::is_none")]
@@ -5515,36 +5508,32 @@ pub struct AutomationDefinitionPatch {
     /// validates event ids and normalizes event-trigger titles and descriptions.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub triggers: Option<Vec<AutomationTrigger>>,
-    /// Change to {@link AutomationDefinition.scheduledRunLimit}. Omit to leave the
-    /// current cap unchanged; supply a
-    /// {@link AutomationScheduledRunLimitPatchKind.Set | set} operation carrying a
-    /// positive integer to set or change the cap, or a
-    /// {@link AutomationScheduledRunLimitPatchKind.Clear | clear} operation to
-    /// return the automation to unlimited scheduling.
-    ///
-    /// Changing a cap while enabled preserves usage. Setting the first finite cap
-    /// on a previously unlimited automation starts a fresh allowance. Hosts reject
-    /// this field when they do not advertise
-    /// {@link AutomationCapabilities.scheduledRunLimits}.
+    /// Complete replacement {@link AutomationDefinition.disableConditions}.
+    /// Omit to leave unchanged; supply an empty array to remove all conditions.
+    /// Each kind may appear at most once; hosts MUST reject duplicate kinds.
+    /// Clearing conditions does not change {@link AutomationDefinition.enabled}.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub scheduled_run_limit: Option<AutomationScheduledRunLimitPatch>,
+    pub disable_conditions: Option<Vec<AutomationDisableCondition>>,
     /// Complete replacement {@link AutomationDefinition._meta}.
     #[serde(rename = "_meta", default, skip_serializing_if = "Option::is_none")]
     pub meta: Option<JsonObject>,
 }
 
-/// Sets the finite scheduled-run cap in an automation patch.
+/// Stops scheduling after a fixed number of scheduled runs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AutomationScheduledRunLimitSetPatch {
+pub struct AutomationFiniteRunsCondition {
     /// Positive-integer cap on scheduled runs.
-    pub value: i64,
+    pub max_runs: i64,
 }
 
-/// Removes the scheduled-run cap in an automation patch.
+/// Stops scheduling once a wall-clock date passes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AutomationScheduledRunLimitClearPatch {}
+pub struct AutomationFinalDateCondition {
+    /// ISO 8601 timestamp after which scheduling stops.
+    pub final_date: String,
+}
 
 /// Authoritative state of one automation in {@link AutomationState.entries}.
 ///
@@ -5561,22 +5550,19 @@ pub struct AutomationEntry {
     /// Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_run_at: Option<String>,
-    /// Host-owned count of scheduled runs consumed against the current allowance
-    /// defined by {@link AutomationDefinition.scheduledRunLimit}.
+    /// Host-owned count of scheduled runs consumed against the current
+    /// {@link AutomationFiniteRunsCondition} allowance. Authoritative usage for the
+    /// **current** allowance, not a lifetime total: the host resets it to `0` when
+    /// a disabled→enabled transition starts a fresh allowance or a
+    /// {@link AutomationFiniteRunsCondition} is added when none was present. It is NOT
+    /// reconstructed from {@link runs} (a bounded, prunable window). The host
+    /// increments it atomically when it admits a scheduled run, including runs
+    /// later cancelled or failed.
     ///
-    /// This is authoritative usage for the **current** allowance, not a lifetime
-    /// total: the host resets it to `0` when a disabled→enabled transition starts
-    /// a fresh allowance, and when a finite cap is first added to a previously
-    /// unlimited automation. It is NOT reconstructed from {@link runs}, which is a
-    /// bounded, prunable window rather than a complete run ledger. The host
-    /// increments it atomically when it admits a scheduled run, including a run
-    /// that is later cancelled or fails.
-    ///
-    /// Absent when the host does not advertise
-    /// {@link AutomationCapabilities.scheduledRunLimits} or the automation has no
-    /// finite cap. Clients render remaining allowance as
-    /// `scheduledRunLimit - scheduledRunCount`; they never maintain their own
-    /// count.
+    /// Absent when {@link AutomationDefinition.disableConditions} contains no
+    /// {@link AutomationFiniteRunsCondition}.
+    /// Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
+    /// never maintain their own count.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scheduled_run_count: Option<i64>,
     /// Newest-first retained run summaries. This is a bounded window; use
@@ -6166,14 +6152,14 @@ pub enum AutomationTrigger {
     Event(AutomationEventTrigger),
 }
 
-/// Change to an automation's scheduled-run cap.
+/// Self-disable rule for an automation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind")]
-pub enum AutomationScheduledRunLimitPatch {
-    #[serde(rename = "set")]
-    Set(AutomationScheduledRunLimitSetPatch),
-    #[serde(rename = "clear")]
-    Clear(AutomationScheduledRunLimitClearPatch),
+pub enum AutomationDisableCondition {
+    #[serde(rename = "finiteRuns")]
+    FiniteRuns(AutomationFiniteRunsCondition),
+    #[serde(rename = "finalDate")]
+    FinalDate(AutomationFinalDateCondition),
 }
 
 /// Provenance describing how an automation run was created.

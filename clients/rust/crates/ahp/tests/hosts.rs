@@ -390,7 +390,6 @@ async fn automation_capabilities_are_exposed_and_survive_reconnect() {
         create: None,
         schedules: None,
         run_cancellation: None,
-        scheduled_run_limits: None,
         run_history_limit: Some(25),
     };
     let drop_after_init = Arc::new(AtomicBool::new(false));

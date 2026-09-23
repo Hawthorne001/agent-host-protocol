@@ -645,7 +645,7 @@ const STATE_ENUMS = [
   'McpServerStatus', 'McpAuthRequiredReason',
   'ChangesetStatus', 'ChangesetOperationStatus', 'ChangesetOperationScope', 'ResourceChangeType',
   'AutomationOperation', 'AutomationMisfirePolicy', 'AutomationTriggerKind',
-  'AutomationScheduledRunLimitPatchKind',
+  'AutomationDisableConditionKind',
   'AutomationRunStatus', 'AutomationRunOriginKind',
 ];
 
@@ -794,8 +794,8 @@ const STATE_STRUCTS: { name: string; omitDiscriminants?: boolean; csName?: strin
   { name: 'AutomationSessionTemplate' },
   { name: 'AutomationDefinition' },
   { name: 'AutomationDefinitionPatch' },
-  { name: 'AutomationScheduledRunLimitSetPatch' },
-  { name: 'AutomationScheduledRunLimitClearPatch' },
+  { name: 'AutomationFiniteRunsCondition' },
+  { name: 'AutomationFinalDateCondition' },
   { name: 'AutomationEntry', mutable: true },
   { name: 'AutomationState', mutable: true },
   { name: 'AutomationManualRunOrigin' },
@@ -1183,13 +1183,13 @@ const AUTOMATION_TRIGGER_UNION: UnionConfig = {
   ],
 };
 
-const AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION: UnionConfig = {
-  name: 'AutomationScheduledRunLimitPatch',
+const AUTOMATION_DISABLE_CONDITION_UNION: UnionConfig = {
+  name: 'AutomationDisableCondition',
   discriminantField: 'kind',
-  doc: 'AutomationScheduledRunLimitPatch changes an automation\'s scheduled-run cap.',
+  doc: 'AutomationDisableCondition is an automation\'s self-disable rule.',
   variants: [
-    { variantName: 'Set', innerType: 'AutomationScheduledRunLimitSetPatch', wireValue: 'set' },
-    { variantName: 'Clear', innerType: 'AutomationScheduledRunLimitClearPatch', wireValue: 'clear' },
+    { variantName: 'FiniteRuns', innerType: 'AutomationFiniteRunsCondition', wireValue: 'finiteRuns' },
+    { variantName: 'FinalDate', innerType: 'AutomationFinalDateCondition', wireValue: 'finalDate' },
   ],
 };
 
@@ -1406,7 +1406,7 @@ function generateStateFile(project: Project): string {
     CHILD_CUSTOMIZATION_UNION, CUSTOMIZATION_LOAD_STATE_UNION,
     MCP_SERVER_STATUS_UNION, TOOL_CALL_CONTRIBUTOR_UNION, SESSION_INPUT_REQUEST_UNION,
     TERMINAL_LIFECYCLE_STATE_UNION, SESSION_ORIGIN_UNION, AUTOMATION_TRIGGER_UNION,
-    AUTOMATION_SCHEDULED_RUN_LIMIT_PATCH_UNION,
+    AUTOMATION_DISABLE_CONDITION_UNION,
     AUTOMATION_RUN_ORIGIN_UNION, AUTOMATION_RUN_LIFECYCLE_UNION,
   ]) {
     lines.push(generateDiscriminatedUnion(u));
@@ -2101,7 +2101,6 @@ const COMMAND_STRUCTS: { name: string; omitDiscriminants?: boolean; csName?: str
   { name: 'AutomationCreateCapability' },
   { name: 'AutomationScheduleCapabilities' },
   { name: 'AutomationRunCancellationCapability' },
-  { name: 'AutomationScheduledRunLimitsCapability' },
   { name: 'ReconnectParams' },
   // Union variants MUST self-carry their `type` discriminator: UnionConverter<T>.Write
   // serializes the inner value by its runtime type and relies on that property to
@@ -2577,7 +2576,7 @@ function checkExhaustiveness(project: Project): void {
     'Customization', 'ChildCustomization', 'ChildCustomizationType',
     'CustomizationLoadState', 'McpServerState', 'ToolCallContributor',
     'SessionOrigin', 'TerminalLifecycleState', 'AutomationTrigger',
-    'AutomationScheduledRunLimitPatch',
+    'AutomationDisableCondition',
     'AutomationRunOrigin', 'AutomationRunLifecycle',
     'SessionInputRequest', 'ToolCallConfirmationState', 'ToolCallRiskAssessment',
     'ReconnectResult', 'AuthRequiredErrorData',
