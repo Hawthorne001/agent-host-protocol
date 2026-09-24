@@ -7030,7 +7030,7 @@
         },
         "runCount": {
           "type": "number",
-          "description": "Host-owned count of scheduled runs consumed against the current\n{@link AutomationAfterRunsCondition} allowance. Authoritative usage for the\n**current** allowance, not a lifetime total: the host resets it to `0` when\na disabled→enabled transition starts a fresh allowance or a\n{@link AutomationAfterRunsCondition} is added when none was present. It is NOT\nreconstructed from {@link runs} (a bounded, prunable window). The host\nincrements it atomically when it admits a scheduled run, including runs\nlater cancelled or failed.\n\nAbsent when {@link AutomationDefinition.disableConditions} contains no\n{@link AutomationAfterRunsCondition}.\nClients render remaining allowance as `max - runCount`; they\nnever maintain their own count."
+          "description": "Host-owned count of scheduled runs consumed against the current\n{@link AutomationAfterRunsCondition} allowance. Authoritative usage for the\n**current** allowance, not a lifetime total: the host resets it to `0` when\na disabled→enabled transition starts a fresh allowance or a\n{@link AutomationAfterRunsCondition} is added when none was present. It is NOT\nreconstructed from {@link runs} (a bounded, prunable window). The host\nincrements it atomically when it admits a scheduled run, including runs\nlater cancelled or failed.\n\nAbsent when {@link AutomationDefinition.disableConditions} contains no\n{@link AutomationAfterRunsCondition}."
         },
         "runs": {
           "type": "array",

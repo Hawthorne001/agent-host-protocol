@@ -5342,9 +5342,7 @@ public sealed class AutomationEntry
     /// later cancelled or failed.
     ///
     /// Absent when {@link AutomationDefinition.disableConditions} contains no
-    /// {@link AutomationAfterRunsCondition}.
-    /// Clients render remaining allowance as `max - runCount`; they
-    /// never maintain their own count.</summary>
+    /// {@link AutomationAfterRunsCondition}.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? RunCount { get; set; }
 

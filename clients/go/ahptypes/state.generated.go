@@ -4026,8 +4026,6 @@ type AutomationEntry struct {
 	//
 	// Absent when {@link AutomationDefinition.disableConditions} contains no
 	// {@link AutomationAfterRunsCondition}.
-	// Clients render remaining allowance as `max - runCount`; they
-	// never maintain their own count.
 	RunCount *int64 `json:"runCount,omitempty"`
 	// Newest-first retained run summaries. This is a bounded window; use
 	// {@link FetchAutomationRunsParams | fetchAutomationRuns} when

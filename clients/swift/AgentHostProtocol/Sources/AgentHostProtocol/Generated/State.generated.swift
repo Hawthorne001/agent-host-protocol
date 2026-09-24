@@ -6444,8 +6444,6 @@ public struct AutomationEntry: Codable, Sendable {
     ///
     /// Absent when {@link AutomationDefinition.disableConditions} contains no
     /// {@link AutomationAfterRunsCondition}.
-    /// Clients render remaining allowance as `max - runCount`; they
-    /// never maintain their own count.
     public var runCount: Int?
     /// Newest-first retained run summaries. This is a bounded window; use
     /// {@link FetchAutomationRunsParams | fetchAutomationRuns} when

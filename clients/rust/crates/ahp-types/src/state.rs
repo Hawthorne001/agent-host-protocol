@@ -5561,8 +5561,6 @@ pub struct AutomationEntry {
     ///
     /// Absent when {@link AutomationDefinition.disableConditions} contains no
     /// {@link AutomationAfterRunsCondition}.
-    /// Clients render remaining allowance as `max - runCount`; they
-    /// never maintain their own count.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_count: Option<i64>,
     /// Newest-first retained run summaries. This is a bounded window; use

@@ -389,8 +389,6 @@ export interface AutomationEntry {
    *
    * Absent when {@link AutomationDefinition.disableConditions} contains no
    * {@link AutomationAfterRunsCondition}.
-   * Clients render remaining allowance as `max - runCount`; they
-   * never maintain their own count.
    */
   runCount?: number;
   /**
