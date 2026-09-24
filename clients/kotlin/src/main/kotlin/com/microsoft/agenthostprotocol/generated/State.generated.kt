@@ -1096,13 +1096,13 @@ enum class AutomationDisableConditionKind {
     /**
      * Stop scheduling after a fixed number of scheduled runs.
      */
-    @SerialName("maxRuns")
-    MAX_RUNS,
+    @SerialName("afterRuns")
+    AFTER_RUNS,
     /**
      * Stop scheduling once a wall-clock date passes.
      */
-    @SerialName("finalDate")
-    FINAL_DATE
+    @SerialName("afterDate")
+    AFTER_DATE
 }
 
 /**
@@ -5403,8 +5403,8 @@ data class AutomationDefinition(
      *
      * Only automatic (scheduled) runs are governed; manual runs via
      * {@link RunAutomationParams | runAutomation} are never blocked. For a
-     * {@link AutomationMaxRunsCondition}, usage is tracked by the host-owned
-     * {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
+     * {@link AutomationAfterRunsCondition}, usage is tracked by the host-owned
+     * {@link AutomationEntry.runCount}. Adding that kind when absent or
      * a disabled→enabled transition starts a fresh allowance. Clearing the
      * conditions does not re-enable a disabled automation. See the
      * {@link /guide/automations | Automations Guide}.
@@ -5457,21 +5457,21 @@ data class AutomationDefinitionPatch(
 )
 
 @Serializable
-data class AutomationMaxRunsCondition(
+data class AutomationAfterRunsCondition(
     val kind: AutomationDisableConditionKind,
     /**
      * Positive-integer cap on scheduled runs.
      */
-    val maxRuns: Long
+    val max: Long
 )
 
 @Serializable
-data class AutomationFinalDateCondition(
+data class AutomationAfterDateCondition(
     val kind: AutomationDisableConditionKind,
     /**
      * ISO 8601 timestamp after which scheduling stops.
      */
-    val finalDate: String
+    val date: String
 )
 
 @Serializable
@@ -5490,20 +5490,20 @@ data class AutomationEntry(
     val nextRunAt: String? = null,
     /**
      * Host-owned count of scheduled runs consumed against the current
-     * {@link AutomationMaxRunsCondition} allowance. Authoritative usage for the
+     * {@link AutomationAfterRunsCondition} allowance. Authoritative usage for the
      * **current** allowance, not a lifetime total: the host resets it to `0` when
      * a disabled→enabled transition starts a fresh allowance or a
-     * {@link AutomationMaxRunsCondition} is added when none was present. It is NOT
+     * {@link AutomationAfterRunsCondition} is added when none was present. It is NOT
      * reconstructed from {@link runs} (a bounded, prunable window). The host
      * increments it atomically when it admits a scheduled run, including runs
      * later cancelled or failed.
      *
      * Absent when {@link AutomationDefinition.disableConditions} contains no
-     * {@link AutomationMaxRunsCondition}.
-     * Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
+     * {@link AutomationAfterRunsCondition}.
+     * Clients render remaining allowance as `max - runCount`; they
      * never maintain their own count.
      */
-    val scheduledRunCount: Long? = null,
+    val runCount: Long? = null,
     /**
      * Newest-first retained run summaries. This is a bounded window; use
      * {@link FetchAutomationRunsParams | fetchAutomationRuns} when
@@ -6917,9 +6917,9 @@ internal object AutomationTriggerSerializer : KSerializer<AutomationTrigger> {
 sealed interface AutomationDisableCondition
 
 @JvmInline
-value class AutomationDisableConditionMaxRuns(val value: AutomationMaxRunsCondition) : AutomationDisableCondition
+value class AutomationDisableConditionAfterRuns(val value: AutomationAfterRunsCondition) : AutomationDisableCondition
 @JvmInline
-value class AutomationDisableConditionFinalDate(val value: AutomationFinalDateCondition) : AutomationDisableCondition
+value class AutomationDisableConditionAfterDate(val value: AutomationAfterDateCondition) : AutomationDisableCondition
 
 internal object AutomationDisableConditionSerializer : KSerializer<AutomationDisableCondition> {
     override val descriptor: SerialDescriptor =
@@ -6934,8 +6934,8 @@ internal object AutomationDisableConditionSerializer : KSerializer<AutomationDis
         val discriminant = (obj["kind"] as? JsonPrimitive)?.content
             ?: error("Missing kind discriminator on AutomationDisableCondition")
         return when (discriminant) {
-            "maxRuns" -> AutomationDisableConditionMaxRuns(input.json.decodeFromJsonElement(AutomationMaxRunsCondition.serializer(), element))
-            "finalDate" -> AutomationDisableConditionFinalDate(input.json.decodeFromJsonElement(AutomationFinalDateCondition.serializer(), element))
+            "afterRuns" -> AutomationDisableConditionAfterRuns(input.json.decodeFromJsonElement(AutomationAfterRunsCondition.serializer(), element))
+            "afterDate" -> AutomationDisableConditionAfterDate(input.json.decodeFromJsonElement(AutomationAfterDateCondition.serializer(), element))
             else -> error("Unknown AutomationDisableCondition discriminator: $discriminant")
         }
     }
@@ -6944,13 +6944,13 @@ internal object AutomationDisableConditionSerializer : KSerializer<AutomationDis
         val output = encoder as? JsonEncoder
             ?: error("AutomationDisableCondition can only be serialized to JSON")
         val element: JsonElement = when (value) {
-            is AutomationDisableConditionMaxRuns -> output.json.encodeToJsonElement(AutomationMaxRunsCondition.serializer(), value.value)
-            is AutomationDisableConditionFinalDate -> output.json.encodeToJsonElement(AutomationFinalDateCondition.serializer(), value.value)
+            is AutomationDisableConditionAfterRuns -> output.json.encodeToJsonElement(AutomationAfterRunsCondition.serializer(), value.value)
+            is AutomationDisableConditionAfterDate -> output.json.encodeToJsonElement(AutomationAfterDateCondition.serializer(), value.value)
         }
         val encodedObject = element.jsonObject.toMutableMap()
         val discriminant = when (value) {
-            is AutomationDisableConditionMaxRuns -> "maxRuns"
-            is AutomationDisableConditionFinalDate -> "finalDate"
+            is AutomationDisableConditionAfterRuns -> "afterRuns"
+            is AutomationDisableConditionAfterDate -> "afterDate"
         }
         if (discriminant != null) encodedObject["kind"] = JsonPrimitive(discriminant)
         output.encodeJsonElement(JsonObject(encodedObject))

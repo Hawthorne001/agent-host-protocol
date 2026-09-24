@@ -10,9 +10,9 @@
         "session": {},
         "enabled": false,
         "triggers": [],
-        "disableConditions": [{ "kind": "maxRuns", "maxRuns": 3 }]
+        "disableConditions": [{ "kind": "afterRuns", "max": 3 }]
       },
-      "scheduledRunCount": 3,
+      "runCount": 3,
       "runs": [],
       "operations": ["update", "remove", "run"],
       "createdAt": "2025-01-01T00:00:00Z",

@@ -8,8 +8,8 @@
     "resource": "ahp-automation:/capped",
     "changes": {
       "disableConditions": [
-        { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" },
-        { "kind": "maxRuns", "maxRuns": 3 }
+        { "kind": "afterDate", "date": "2026-08-07T00:00:00Z" },
+        { "kind": "afterRuns", "max": 3 }
       ]
     }
   },
@@ -18,8 +18,8 @@
     "resource": "ahp-automation:/capped",
     "changes": {
       "disableConditions": [
-        { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" },
-        { "kind": "maxRuns", "maxRuns": 3 }
+        { "kind": "afterDate", "date": "2026-08-07T00:00:00Z" },
+        { "kind": "afterRuns", "max": 3 }
       ]
     }
   }]

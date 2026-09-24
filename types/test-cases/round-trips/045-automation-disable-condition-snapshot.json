@@ -20,11 +20,11 @@
             "misfirePolicy": "runOnce"
           }],
           "disableConditions": [
-            { "kind": "maxRuns", "maxRuns": 3 },
-            { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
+            { "kind": "afterRuns", "max": 3 },
+            { "kind": "afterDate", "date": "2026-08-07T00:00:00Z" }
           ]
         },
-        "scheduledRunCount": 3,
+        "runCount": 3,
         "runs": [],
         "operations": ["update", "remove", "run"],
         "createdAt": "2026-08-01T00:00:00Z",
@@ -50,11 +50,11 @@
             "misfirePolicy": "runOnce"
           }],
           "disableConditions": [
-            { "kind": "maxRuns", "maxRuns": 3 },
-            { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
+            { "kind": "afterRuns", "max": 3 },
+            { "kind": "afterDate", "date": "2026-08-07T00:00:00Z" }
           ]
         },
-        "scheduledRunCount": 3,
+        "runCount": 3,
         "runs": [],
         "operations": ["update", "remove", "run"],
         "createdAt": "2026-08-01T00:00:00Z",

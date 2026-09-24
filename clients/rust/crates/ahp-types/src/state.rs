@@ -1392,11 +1392,11 @@ pub enum AutomationTriggerKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AutomationDisableConditionKind {
     /// Stop scheduling after a fixed number of scheduled runs.
-    #[serde(rename = "maxRuns")]
-    MaxRuns,
+    #[serde(rename = "afterRuns")]
+    AfterRuns,
     /// Stop scheduling once a wall-clock date passes.
-    #[serde(rename = "finalDate")]
-    FinalDate,
+    #[serde(rename = "afterDate")]
+    AfterDate,
 }
 
 /// Lifecycle status of one automation run.
@@ -5471,8 +5471,8 @@ pub struct AutomationDefinition {
     ///
     /// Only automatic (scheduled) runs are governed; manual runs via
     /// {@link RunAutomationParams | runAutomation} are never blocked. For a
-    /// {@link AutomationMaxRunsCondition}, usage is tracked by the host-owned
-    /// {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
+    /// {@link AutomationAfterRunsCondition}, usage is tracked by the host-owned
+    /// {@link AutomationEntry.runCount}. Adding that kind when absent or
     /// a disabled→enabled transition starts a fresh allowance. Clearing the
     /// conditions does not re-enable a disabled automation. See the
     /// {@link /guide/automations | Automations Guide}.
@@ -5522,17 +5522,17 @@ pub struct AutomationDefinitionPatch {
 /// Stops scheduling after a fixed number of scheduled runs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AutomationMaxRunsCondition {
+pub struct AutomationAfterRunsCondition {
     /// Positive-integer cap on scheduled runs.
-    pub max_runs: i64,
+    pub max: i64,
 }
 
 /// Stops scheduling once a wall-clock date passes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AutomationFinalDateCondition {
+pub struct AutomationAfterDateCondition {
     /// ISO 8601 timestamp after which scheduling stops.
-    pub final_date: String,
+    pub date: String,
 }
 
 /// Authoritative state of one automation in {@link AutomationState.entries}.
@@ -5551,20 +5551,20 @@ pub struct AutomationEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_run_at: Option<String>,
     /// Host-owned count of scheduled runs consumed against the current
-    /// {@link AutomationMaxRunsCondition} allowance. Authoritative usage for the
+    /// {@link AutomationAfterRunsCondition} allowance. Authoritative usage for the
     /// **current** allowance, not a lifetime total: the host resets it to `0` when
     /// a disabled→enabled transition starts a fresh allowance or a
-    /// {@link AutomationMaxRunsCondition} is added when none was present. It is NOT
+    /// {@link AutomationAfterRunsCondition} is added when none was present. It is NOT
     /// reconstructed from {@link runs} (a bounded, prunable window). The host
     /// increments it atomically when it admits a scheduled run, including runs
     /// later cancelled or failed.
     ///
     /// Absent when {@link AutomationDefinition.disableConditions} contains no
-    /// {@link AutomationMaxRunsCondition}.
-    /// Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
+    /// {@link AutomationAfterRunsCondition}.
+    /// Clients render remaining allowance as `max - runCount`; they
     /// never maintain their own count.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub scheduled_run_count: Option<i64>,
+    pub run_count: Option<i64>,
     /// Newest-first retained run summaries. This is a bounded window; use
     /// {@link FetchAutomationRunsParams | fetchAutomationRuns} when
     /// {@link AutomationEntry.runsNextCursor} is present.
@@ -6156,10 +6156,10 @@ pub enum AutomationTrigger {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum AutomationDisableCondition {
-    #[serde(rename = "maxRuns")]
-    MaxRuns(AutomationMaxRunsCondition),
-    #[serde(rename = "finalDate")]
-    FinalDate(AutomationFinalDateCondition),
+    #[serde(rename = "afterRuns")]
+    AfterRuns(AutomationAfterRunsCondition),
+    #[serde(rename = "afterDate")]
+    AfterDate(AutomationAfterDateCondition),
 }
 
 /// Provenance describing how an automation run was created.

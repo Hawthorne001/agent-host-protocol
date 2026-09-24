@@ -1078,9 +1078,9 @@ public enum AutomationTriggerKind: String, Codable, Sendable {
 /// Discriminant for an {@link AutomationDisableCondition}.
 public enum AutomationDisableConditionKind: String, Codable, Sendable {
     /// Stop scheduling after a fixed number of scheduled runs.
-    case maxRuns = "maxRuns"
+    case afterRuns = "afterRuns"
     /// Stop scheduling once a wall-clock date passes.
-    case finalDate = "finalDate"
+    case afterDate = "afterDate"
 }
 
 /// Lifecycle status of one automation run.
@@ -6309,8 +6309,8 @@ public struct AutomationDefinition: Codable, Sendable {
     ///
     /// Only automatic (scheduled) runs are governed; manual runs via
     /// {@link RunAutomationParams | runAutomation} are never blocked. For a
-    /// {@link AutomationMaxRunsCondition}, usage is tracked by the host-owned
-    /// {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
+    /// {@link AutomationAfterRunsCondition}, usage is tracked by the host-owned
+    /// {@link AutomationEntry.runCount}. Adding that kind when absent or
     /// a disabled→enabled transition starts a fresh allowance. Clearing the
     /// conditions does not re-enable a disabled automation. See the
     /// {@link /guide/automations | Automations Guide}.
@@ -6398,31 +6398,31 @@ public struct AutomationDefinitionPatch: Codable, Sendable {
     }
 }
 
-public struct AutomationMaxRunsCondition: Codable, Sendable {
+public struct AutomationAfterRunsCondition: Codable, Sendable {
     public var kind: AutomationDisableConditionKind
     /// Positive-integer cap on scheduled runs.
-    public var maxRuns: Int
+    public var max: Int
 
     public init(
         kind: AutomationDisableConditionKind,
-        maxRuns: Int
+        max: Int
     ) {
         self.kind = kind
-        self.maxRuns = maxRuns
+        self.max = max
     }
 }
 
-public struct AutomationFinalDateCondition: Codable, Sendable {
+public struct AutomationAfterDateCondition: Codable, Sendable {
     public var kind: AutomationDisableConditionKind
     /// ISO 8601 timestamp after which scheduling stops.
-    public var finalDate: String
+    public var date: String
 
     public init(
         kind: AutomationDisableConditionKind,
-        finalDate: String
+        date: String
     ) {
         self.kind = kind
-        self.finalDate = finalDate
+        self.date = date
     }
 }
 
@@ -6434,19 +6434,19 @@ public struct AutomationEntry: Codable, Sendable {
     /// Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending.
     public var nextRunAt: String?
     /// Host-owned count of scheduled runs consumed against the current
-    /// {@link AutomationMaxRunsCondition} allowance. Authoritative usage for the
+    /// {@link AutomationAfterRunsCondition} allowance. Authoritative usage for the
     /// **current** allowance, not a lifetime total: the host resets it to `0` when
     /// a disabled→enabled transition starts a fresh allowance or a
-    /// {@link AutomationMaxRunsCondition} is added when none was present. It is NOT
+    /// {@link AutomationAfterRunsCondition} is added when none was present. It is NOT
     /// reconstructed from {@link runs} (a bounded, prunable window). The host
     /// increments it atomically when it admits a scheduled run, including runs
     /// later cancelled or failed.
     ///
     /// Absent when {@link AutomationDefinition.disableConditions} contains no
-    /// {@link AutomationMaxRunsCondition}.
-    /// Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
+    /// {@link AutomationAfterRunsCondition}.
+    /// Clients render remaining allowance as `max - runCount`; they
     /// never maintain their own count.
-    public var scheduledRunCount: Int?
+    public var runCount: Int?
     /// Newest-first retained run summaries. This is a bounded window; use
     /// {@link FetchAutomationRunsParams | fetchAutomationRuns} when
     /// {@link AutomationEntry.runsNextCursor} is present.
@@ -6466,7 +6466,7 @@ public struct AutomationEntry: Codable, Sendable {
         case resource
         case definition
         case nextRunAt
-        case scheduledRunCount
+        case runCount
         case runs
         case runsNextCursor
         case operations
@@ -6479,7 +6479,7 @@ public struct AutomationEntry: Codable, Sendable {
         resource: String,
         definition: AutomationDefinition,
         nextRunAt: String? = nil,
-        scheduledRunCount: Int? = nil,
+        runCount: Int? = nil,
         runs: [AutomationRunSummary],
         runsNextCursor: String? = nil,
         operations: [AutomationOperation],
@@ -6490,7 +6490,7 @@ public struct AutomationEntry: Codable, Sendable {
         self.resource = resource
         self.definition = definition
         self.nextRunAt = nextRunAt
-        self.scheduledRunCount = scheduledRunCount
+        self.runCount = runCount
         self.runs = runs
         self.runsNextCursor = runsNextCursor
         self.operations = operations
@@ -7710,8 +7710,8 @@ public enum AutomationTrigger: Codable, Sendable {
 }
 
 public enum AutomationDisableCondition: Codable, Sendable {
-    case maxRuns(AutomationMaxRunsCondition)
-    case finalDate(AutomationFinalDateCondition)
+    case afterRuns(AutomationAfterRunsCondition)
+    case afterDate(AutomationAfterDateCondition)
 
     private enum DiscriminantKey: String, CodingKey {
         case discriminant = "kind"
@@ -7721,10 +7721,10 @@ public enum AutomationDisableCondition: Codable, Sendable {
         let container = try decoder.container(keyedBy: DiscriminantKey.self)
         let discriminant = try container.decode(String.self, forKey: .discriminant)
         switch discriminant {
-        case "maxRuns":
-            self = .maxRuns(try AutomationMaxRunsCondition(from: decoder))
-        case "finalDate":
-            self = .finalDate(try AutomationFinalDateCondition(from: decoder))
+        case "afterRuns":
+            self = .afterRuns(try AutomationAfterRunsCondition(from: decoder))
+        case "afterDate":
+            self = .afterDate(try AutomationAfterDateCondition(from: decoder))
         default:
             throw DecodingError.dataCorruptedError(forKey: .discriminant, in: container, debugDescription: "Unknown AutomationDisableCondition discriminant: \(discriminant)")
         }
@@ -7732,11 +7732,11 @@ public enum AutomationDisableCondition: Codable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         switch self {
-        case .maxRuns(var value):
-            value.kind = .maxRuns
+        case .afterRuns(var value):
+            value.kind = .afterRuns
             try value.encode(to: encoder)
-        case .finalDate(var value):
-            value.kind = .finalDate
+        case .afterDate(var value):
+            value.kind = .afterDate
             try value.encode(to: encoder)
         }
     }

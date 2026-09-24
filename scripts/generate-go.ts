@@ -876,8 +876,8 @@ const STATE_STRUCTS: { name: string; omitDiscriminants?: boolean; goName?: strin
   { name: 'AutomationSessionTemplate' },
   { name: 'AutomationDefinition' },
   { name: 'AutomationDefinitionPatch' },
-  { name: 'AutomationMaxRunsCondition' },
-  { name: 'AutomationFinalDateCondition' },
+  { name: 'AutomationAfterRunsCondition' },
+  { name: 'AutomationAfterDateCondition' },
   { name: 'AutomationEntry' },
   { name: 'AutomationState' },
   { name: 'AutomationManualRunOrigin' },
@@ -1151,8 +1151,8 @@ const AUTOMATION_DISABLE_CONDITION_UNION: UnionConfig = {
   discriminantField: 'kind',
   doc: 'AutomationDisableCondition is an automation\'s self-disable rule.',
   variants: [
-    { variantName: 'MaxRuns', innerType: 'AutomationMaxRunsCondition', wireValue: 'maxRuns' },
-    { variantName: 'FinalDate', innerType: 'AutomationFinalDateCondition', wireValue: 'finalDate' },
+    { variantName: 'AfterRuns', innerType: 'AutomationAfterRunsCondition', wireValue: 'afterRuns' },
+    { variantName: 'AfterDate', innerType: 'AutomationAfterDateCondition', wireValue: 'afterDate' },
   ],
   injectDiscriminantOnMarshal: true,
 };

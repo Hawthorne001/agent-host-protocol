@@ -216,8 +216,8 @@ describe('generated JSON schemas', () => {
 
       it('accepts optional, empty, single-kind, and combined automation disable conditions', () => {
         const defs = schema.$defs as Record<string, Record<string, unknown>>;
-        const maxRuns = { kind: 'maxRuns', maxRuns: 3 };
-        const finalDate = { kind: 'finalDate', finalDate: '2026-10-01T00:00:00Z' };
+        const afterRuns = { kind: 'afterRuns', max: 3 };
+        const afterDate = { kind: 'afterDate', date: '2026-10-01T00:00:00Z' };
         const definition = {
           title: 'Triage',
           message: { text: 'go', origin: { kind: 'automation' } },
@@ -230,7 +230,7 @@ describe('generated JSON schemas', () => {
           if (!target) continue;
           const base = type === 'AutomationDefinition' ? definition : {};
           assert.equal(schemaAccepts(schema, target as JsonNode, base), true, `${type}: absent`);
-          for (const conditions of [[], [maxRuns], [finalDate], [maxRuns, finalDate], [finalDate, maxRuns]]) {
+          for (const conditions of [[], [afterRuns], [afterDate], [afterRuns, afterDate], [afterDate, afterRuns]]) {
             assert.equal(schemaAccepts(schema, target as JsonNode, {
               ...base,
               disableConditions: conditions,
@@ -241,15 +241,15 @@ describe('generated JSON schemas', () => {
 
       it('rejects duplicate disable-condition kinds, including different values of the same kind', () => {
         const defs = schema.$defs as Record<string, Record<string, unknown>>;
-        const maxRuns = { kind: 'maxRuns', maxRuns: 3 };
-        const finalDate = { kind: 'finalDate', finalDate: '2026-10-01T00:00:00Z' };
+        const afterRuns = { kind: 'afterRuns', max: 3 };
+        const afterDate = { kind: 'afterDate', date: '2026-10-01T00:00:00Z' };
         const duplicateConditions = [
-          [maxRuns, maxRuns],
-          [maxRuns, { kind: 'maxRuns', maxRuns: 5 }],
-          [finalDate, finalDate],
-          [finalDate, { kind: 'finalDate', finalDate: '2026-11-01T00:00:00Z' }],
-          [maxRuns, finalDate, maxRuns],
-          [finalDate, maxRuns, finalDate],
+          [afterRuns, afterRuns],
+          [afterRuns, { kind: 'afterRuns', max: 5 }],
+          [afterDate, afterDate],
+          [afterDate, { kind: 'afterDate', date: '2026-11-01T00:00:00Z' }],
+          [afterRuns, afterDate, afterRuns],
+          [afterDate, afterRuns, afterDate],
         ];
         for (const type of ['AutomationDefinition', 'AutomationDefinitionPatch']) {
           const target = defs[type];
@@ -271,14 +271,18 @@ describe('generated JSON schemas', () => {
           const properties = target.properties as Record<string, JsonNode>;
           for (const value of [
             null,
-            { kind: 'maxRuns', maxRuns: 3 },
+            { kind: 'afterRuns', max: 3 },
             [null],
             [{ kind: 'unknown' }],
-            [{ kind: 'maxRuns' }],
-            [{ kind: 'finalDate' }],
-            [{ kind: 'maxRuns', maxRuns: 0 }],
-            [{ kind: 'maxRuns', maxRuns: -1 }],
-            [{ kind: 'maxRuns', maxRuns: 1.5 }],
+            [{ kind: 'afterRuns' }],
+            [{ kind: 'afterDate' }],
+            [{ kind: 'afterRuns', max: 0 }],
+            [{ kind: 'afterRuns', max: -1 }],
+            [{ kind: 'afterRuns', max: 1.5 }],
+            [{ kind: 'maxRuns', maxRuns: 3 }],
+            [{ kind: 'finalDate', finalDate: '2026-10-01T00:00:00Z' }],
+            [{ kind: 'afterRuns', maxRuns: 3 }],
+            [{ kind: 'afterDate', finalDate: '2026-10-01T00:00:00Z' }],
           ]) {
             assert.equal(schemaAccepts(schema, properties.disableConditions, value), false, `${type}: ${JSON.stringify(value)}`);
           }

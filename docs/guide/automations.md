@@ -109,6 +109,7 @@ AutomationDefinition {
   session: AutomationSessionTemplate
   enabled: boolean
   triggers: AutomationTrigger[]
+  disableConditions?: AutomationDisableCondition[]
   _meta?: Record<string, unknown>
 }
 ```
@@ -311,14 +312,14 @@ A definition may stop itself automatically through the optional
 `disableConditions` array. Each element is an `AutomationDisableCondition`
 discriminated union:
 
-- `{ kind: "maxRuns", maxRuns }` — stop after a fixed number of **scheduled**
-  runs (`maxRuns` is a positive integer).
-- `{ kind: "finalDate", finalDate }` — stop once the ISO 8601 `finalDate`
+- `{ kind: "afterRuns", max }` — stop after a fixed number of **scheduled**
+  runs (`max` is a positive integer).
+- `{ kind: "afterDate", date }` — stop once the ISO 8601 `date`
   passes.
 
 Conditions combine with **logical OR**: meeting any condition disables automatic
-scheduling. For example, `[ { kind: "maxRuns", maxRuns: 3 },
-{ kind: "finalDate", finalDate: "2026-10-01T00:00:00Z" } ]` stops after three
+scheduling. For example, `[ { kind: "afterRuns", max: 3 },
+{ kind: "afterDate", date: "2026-10-01T00:00:00Z" } ]` stops after three
 scheduled runs or when the date passes, whichever happens first. Order does not
 matter. Each kind may appear **at most once**; hosts MUST reject create and
 update requests with duplicate kinds, even if their values are identical.
@@ -326,35 +327,35 @@ An absent field or an empty array means there are no automatic disable
 conditions; neither overrides `enabled` or the configured triggers.
 
 Conditions govern only runs created by automatic triggers. Manual runs via
-`runAutomation` never consume a `maxRuns` allowance and are never blocked by
+`runAutomation` never consume an `afterRuns` allowance and are never blocked by
 either condition — a host continues to advertise the `run` operation even after
 the automation has stopped scheduling, exactly as it does for a disabled
 automation.
 
-For a `maxRuns` condition the host owns usage through the authoritative
-`AutomationEntry.scheduledRunCount`. It is the count for the **current
+For an `afterRuns` condition the host owns usage through the authoritative
+`AutomationEntry.runCount`. It is the count for the **current
 allowance**, not a lifetime total, and it is not reconstructed from the bounded
 `runs` window. The host increments it atomically when it admits a scheduled run,
 so a slot is spent even if that run is later cancelled or fails before startup.
 Catch-up runs are scheduled runs and consume the allowance; manual runs do not.
-Clients display remaining allowance as `maxRuns - scheduledRunCount` and never
+Clients display remaining allowance as `max - runCount` and never
 keep their own count.
 
 Meeting any condition sets `enabled` to `false`,
-while the definition retains its `disableConditions`. A `finalDate` stays in the
-definition after it passes, and clients should warn before re-enabling. For a
-`maxRuns` condition, the allowance resets — the host sets `scheduledRunCount`
+while the definition retains its `disableConditions`. An `afterDate` condition
+stays in the definition after it passes, and clients should warn before re-enabling. For an
+`afterRuns` condition, the allowance resets — the host sets `runCount`
 back to `0` — in exactly two cases:
 
 - a disabled→enabled transition (`enabled` changes from `false` to `true`), and
-- adding a `maxRuns` condition when none was present, including alongside an
-  existing `finalDate` condition.
+- adding an `afterRuns` condition when none was present, including alongside an
+  existing `afterDate` condition.
 
-Editing a `maxRuns` condition while enabled preserves usage: with two of
-three runs spent, raising `maxRuns` to five leaves three remaining. Changing,
-adding, or removing only the `finalDate` condition preserves that count, as
-does reordering the conditions. Removing `maxRuns` makes
-`scheduledRunCount` absent. Other edits that do not change `enabled` never reset
+Editing an `afterRuns` condition while enabled preserves usage: with two of
+three runs spent, raising `max` to five leaves three remaining. Changing,
+adding, or removing only the `afterDate` condition preserves that count, as
+does reordering the conditions. Removing `afterRuns` makes
+`runCount` absent. Other edits that do not change `enabled` never reset
 the count.
 
 Edit conditions through `automation/updateRequested`, using the existing

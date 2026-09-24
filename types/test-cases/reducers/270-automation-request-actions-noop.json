@@ -10,9 +10,9 @@
         "session": {},
         "enabled": true,
         "triggers": [],
-        "disableConditions": [{ "kind": "maxRuns", "maxRuns": 3 }]
+        "disableConditions": [{ "kind": "afterRuns", "max": 3 }]
       },
-      "scheduledRunCount": 2,
+      "runCount": 2,
       "runs": [],
       "operations": ["update", "remove", "run"],
       "createdAt": "2025-01-01T00:00:00Z",
@@ -44,8 +44,8 @@
       "resource": "ahp-automation:/a1",
       "changes": {
         "disableConditions": [
-          { "kind": "maxRuns", "maxRuns": 5 },
-          { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
+          { "kind": "afterRuns", "max": 5 },
+          { "kind": "afterDate", "date": "2026-08-07T00:00:00Z" }
         ]
       }
     },
@@ -64,9 +64,9 @@
         "session": {},
         "enabled": true,
         "triggers": [],
-        "disableConditions": [{ "kind": "maxRuns", "maxRuns": 3 }]
+        "disableConditions": [{ "kind": "afterRuns", "max": 3 }]
       },
-      "scheduledRunCount": 2,
+      "runCount": 2,
       "runs": [],
       "operations": ["update", "remove", "run"],
       "createdAt": "2025-01-01T00:00:00Z",

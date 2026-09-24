@@ -1,5 +1,5 @@
 {
-  "description": "automation set preserves both definition disable conditions and the host-owned scheduledRunCount on the upserted entry",
+  "description": "automation set preserves both definition disable conditions and the host-owned runCount on the upserted entry",
   "reducer": "automation",
   "initial": {
     "entries": []
@@ -15,11 +15,11 @@
         "enabled": false,
         "triggers": [],
         "disableConditions": [
-          { "kind": "maxRuns", "maxRuns": 3 },
-          { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
+          { "kind": "afterRuns", "max": 3 },
+          { "kind": "afterDate", "date": "2026-08-07T00:00:00Z" }
         ]
       },
-      "scheduledRunCount": 3,
+      "runCount": 3,
       "runs": [],
       "operations": ["update", "remove", "run"],
       "createdAt": "2025-01-01T00:00:00Z",
@@ -36,11 +36,11 @@
         "enabled": false,
         "triggers": [],
         "disableConditions": [
-          { "kind": "maxRuns", "maxRuns": 3 },
-          { "kind": "finalDate", "finalDate": "2026-08-07T00:00:00Z" }
+          { "kind": "afterRuns", "max": 3 },
+          { "kind": "afterDate", "date": "2026-08-07T00:00:00Z" }
         ]
       },
-      "scheduledRunCount": 3,
+      "runCount": 3,
       "runs": [],
       "operations": ["update", "remove", "run"],
       "createdAt": "2025-01-01T00:00:00Z",

@@ -515,9 +515,9 @@ type AutomationDisableConditionKind string
 
 const (
 	// Stop scheduling after a fixed number of scheduled runs.
-	AutomationDisableConditionKindMaxRuns AutomationDisableConditionKind = "maxRuns"
+	AutomationDisableConditionKindAfterRuns AutomationDisableConditionKind = "afterRuns"
 	// Stop scheduling once a wall-clock date passes.
-	AutomationDisableConditionKindFinalDate AutomationDisableConditionKind = "finalDate"
+	AutomationDisableConditionKindAfterDate AutomationDisableConditionKind = "afterDate"
 )
 
 // Lifecycle status of one automation run.
@@ -3952,8 +3952,8 @@ type AutomationDefinition struct {
 	//
 	// Only automatic (scheduled) runs are governed; manual runs via
 	// {@link RunAutomationParams | runAutomation} are never blocked. For a
-	// {@link AutomationMaxRunsCondition}, usage is tracked by the host-owned
-	// {@link AutomationEntry.scheduledRunCount}. Adding that kind when absent or
+	// {@link AutomationAfterRunsCondition}, usage is tracked by the host-owned
+	// {@link AutomationEntry.runCount}. Adding that kind when absent or
 	// a disabled→enabled transition starts a fresh allowance. Clearing the
 	// conditions does not re-enable a disabled automation. See the
 	// {@link /guide/automations | Automations Guide}.
@@ -3990,17 +3990,17 @@ type AutomationDefinitionPatch struct {
 }
 
 // Stops scheduling after a fixed number of scheduled runs.
-type AutomationMaxRunsCondition struct {
+type AutomationAfterRunsCondition struct {
 	Kind AutomationDisableConditionKind `json:"kind"`
 	// Positive-integer cap on scheduled runs.
-	MaxRuns int64 `json:"maxRuns"`
+	Max int64 `json:"max"`
 }
 
 // Stops scheduling once a wall-clock date passes.
-type AutomationFinalDateCondition struct {
+type AutomationAfterDateCondition struct {
 	Kind AutomationDisableConditionKind `json:"kind"`
 	// ISO 8601 timestamp after which scheduling stops.
-	FinalDate string `json:"finalDate"`
+	Date string `json:"date"`
 }
 
 // Authoritative state of one automation in {@link AutomationState.entries}.
@@ -4016,19 +4016,19 @@ type AutomationEntry struct {
 	// Earliest schedule occurrence awaiting evaluation, as an ISO 8601 timestamp. It may be in the past while catch-up is pending.
 	NextRunAt *string `json:"nextRunAt,omitempty"`
 	// Host-owned count of scheduled runs consumed against the current
-	// {@link AutomationMaxRunsCondition} allowance. Authoritative usage for the
+	// {@link AutomationAfterRunsCondition} allowance. Authoritative usage for the
 	// **current** allowance, not a lifetime total: the host resets it to `0` when
 	// a disabled→enabled transition starts a fresh allowance or a
-	// {@link AutomationMaxRunsCondition} is added when none was present. It is NOT
+	// {@link AutomationAfterRunsCondition} is added when none was present. It is NOT
 	// reconstructed from {@link runs} (a bounded, prunable window). The host
 	// increments it atomically when it admits a scheduled run, including runs
 	// later cancelled or failed.
 	//
 	// Absent when {@link AutomationDefinition.disableConditions} contains no
-	// {@link AutomationMaxRunsCondition}.
-	// Clients render remaining allowance as `maxRuns - scheduledRunCount`; they
+	// {@link AutomationAfterRunsCondition}.
+	// Clients render remaining allowance as `max - runCount`; they
 	// never maintain their own count.
-	ScheduledRunCount *int64 `json:"scheduledRunCount,omitempty"`
+	RunCount *int64 `json:"runCount,omitempty"`
 	// Newest-first retained run summaries. This is a bounded window; use
 	// {@link FetchAutomationRunsParams | fetchAutomationRuns} when
 	// {@link AutomationEntry.runsNextCursor} is present.
@@ -5716,8 +5716,8 @@ type AutomationDisableCondition struct {
 // concrete variant of AutomationDisableCondition.
 type isAutomationDisableCondition interface{ isAutomationDisableCondition() }
 
-func (*AutomationMaxRunsCondition) isAutomationDisableCondition()   {}
-func (*AutomationFinalDateCondition) isAutomationDisableCondition() {}
+func (*AutomationAfterRunsCondition) isAutomationDisableCondition() {}
+func (*AutomationAfterDateCondition) isAutomationDisableCondition() {}
 
 // UnmarshalJSON decodes the variant indicated by the "kind" discriminator.
 func (u *AutomationDisableCondition) UnmarshalJSON(data []byte) error {
@@ -5729,14 +5729,14 @@ func (u *AutomationDisableCondition) UnmarshalJSON(data []byte) error {
 		return missingDiscriminatorError("AutomationDisableCondition", "kind")
 	}
 	switch disc {
-	case "maxRuns":
-		var value AutomationMaxRunsCondition
+	case "afterRuns":
+		var value AutomationAfterRunsCondition
 		if err := json.Unmarshal(data, &value); err != nil {
 			return err
 		}
 		u.Value = &value
-	case "finalDate":
-		var value AutomationFinalDateCondition
+	case "afterDate":
+		var value AutomationAfterDateCondition
 		if err := json.Unmarshal(data, &value); err != nil {
 			return err
 		}
@@ -5761,10 +5761,10 @@ func (u AutomationDisableCondition) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	switch u.Value.(type) {
-	case *AutomationMaxRunsCondition:
-		object["kind"] = json.RawMessage("\"maxRuns\"")
-	case *AutomationFinalDateCondition:
-		object["kind"] = json.RawMessage("\"finalDate\"")
+	case *AutomationAfterRunsCondition:
+		object["kind"] = json.RawMessage("\"afterRuns\"")
+	case *AutomationAfterDateCondition:
+		object["kind"] = json.RawMessage("\"afterDate\"")
 	}
 	return json.Marshal(object)
 }
