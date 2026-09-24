@@ -3649,7 +3649,7 @@ data class ToolResultFileEditContent(
 data class ToolResultTerminalContent(
     val type: ToolResultContentType,
     /**
-     * Terminal URI (subscribable for full terminal state)
+     * Terminal URI (subscribable for live or retained terminal state)
      */
     val resource: String,
     /**
