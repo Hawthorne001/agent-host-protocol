@@ -2142,7 +2142,7 @@ type ToolCallPendingConfirmationState struct {
 	// Risk assessment that informed the confirmation requirement.
 	RiskAssessment *ToolCallRiskAssessment `json:"riskAssessment,omitempty"`
 	// File edits that this tool call will perform, for preview before confirmation
-	Edits *json.RawMessage `json:"edits,omitempty"`
+	Edits *FileEditCollection `json:"edits,omitempty"`
 	// Whether the agent host allows the client to edit the tool's input parameters before confirming
 	Editable *bool `json:"editable,omitempty"`
 	// Options the server offers for this confirmation. When present, the client
@@ -2469,11 +2469,11 @@ type ToolResultResourceContent struct {
 // Describes a file modification performed by a tool.
 type ToolResultFileEditContent struct {
 	// The file state before the edit. Absent for file creations or for in-place file edits.
-	Before *json.RawMessage `json:"before,omitempty"`
+	Before *FileEditSide `json:"before,omitempty"`
 	// The file state after the edit. Absent for file deletions.
-	After *json.RawMessage `json:"after,omitempty"`
+	After *FileEditSide `json:"after,omitempty"`
 	// Optional diff display metadata
-	Diff *json.RawMessage      `json:"diff,omitempty"`
+	Diff *FileEditDiffStats    `json:"diff,omitempty"`
 	Type ToolResultContentType `json:"type"`
 }
 
@@ -3280,17 +3280,35 @@ type ToolCallMcpContributor struct {
 	CustomizationId string `json:"customizationId"`
 }
 
+type FileEditSide struct {
+	// URI of the file on this side of the edit
+	Uri URI `json:"uri"`
+	// Reference to the file content on this side of the edit
+	Content ContentRef `json:"content"`
+}
+
+type FileEditDiffStats struct {
+	// Number of items added (e.g., lines for text files, cells for notebooks)
+	Added *int64 `json:"added,omitempty"`
+	// Number of items removed (e.g., lines for text files, cells for notebooks)
+	Removed *int64 `json:"removed,omitempty"`
+}
+
 // Describes a file modification with before/after state and diff metadata.
 //
 // Supports creates (only `after`), deletes (only `before`), renames/moves
 // (different `uri` in `before` and `after`), and edits (same `uri`, different content).
 type FileEdit struct {
 	// The file state before the edit. Absent for file creations or for in-place file edits.
-	Before *json.RawMessage `json:"before,omitempty"`
+	Before *FileEditSide `json:"before,omitempty"`
 	// The file state after the edit. Absent for file deletions.
-	After *json.RawMessage `json:"after,omitempty"`
+	After *FileEditSide `json:"after,omitempty"`
 	// Optional diff display metadata
-	Diff *json.RawMessage `json:"diff,omitempty"`
+	Diff *FileEditDiffStats `json:"diff,omitempty"`
+}
+
+type FileEditCollection struct {
+	Items []FileEdit `json:"items"`
 }
 
 // Outcome of a command run in a terminal-style tool, filled in on
